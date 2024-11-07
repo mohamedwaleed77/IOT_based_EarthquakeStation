@@ -1,1 +1,1 @@
-#IOT based Earthquake Station 
+# IOT based Earthquake Station 
