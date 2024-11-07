@@ -1,0 +1,1 @@
+#IOT based Earthquake Station 
