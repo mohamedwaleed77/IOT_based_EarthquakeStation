@@ -1,0 +1,62 @@
+version: '3.8'
+
+networks:
+  app-network:
+    driver: bridge
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: stationsql
+    environment:
+      - MYSQL_ROOT_PASSWORD=  # Empty password for MySQL
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_DATABASE=station
+    ports:
+      - "3306:3306"
+    volumes:
+      - "./database_init:/docker-entrypoint-initdb.d"
+      - "./savedata:/var/lib/mysql"
+    networks:
+      - app-network
+
+  frontend:
+    container_name: station_frontend
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    environment:
+      - PMA_HOST=mysql  # Use the MySQL service name as host
+      - PMA_PORT=3306
+      - PMA_USER=root
+      - PMA_PASSWORD=
+    ports:
+      - "3002:80"
+    depends_on:
+      - mysql
+    networks:
+      - app-network
+
+  backend:
+    container_name: station_backend
+    build: ./backend
+    ports:
+      - "3001:3001"
+    environment:
+      - MYSQL_HOST=mysql  # Use the name of the MySQL service here
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=  # Empty password as per your settings
+      - MYSQL_DATABASE=station
+    depends_on:
+      - mysql
+    networks:
+      - app-network
+    command: ["sh", "-c", "/usr/local/bin/wait-for-it mysql:3306 -- node index.js"]
+    restart: always

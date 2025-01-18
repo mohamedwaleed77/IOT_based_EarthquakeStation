@@ -1,0 +1,51 @@
+.App {
+  text-align: center;
+  
+}
+
+ 
+.active {
+  @apply
+  font-normal	
+  bg-gradient-to-l from-gray-800 via-blue-500 to-gray-800
+}
+html,body{
+  @apply
+  bg-gray-200
+}
+
+div{
+  animation: dropdown 0.3s ease-in;
+}
+@keyframes dropdown{
+  from{opacity: 0;
+      transform: translateY(-20px);
+    ;}
+  to{opacity: 1;}
+}
+
+@media (max-width:600px)  {
+  .navbar {
+    font-size: 0.68rem;
+
+  }
+  .search_bar{
+    font-size: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap:2px;
+  }
+  .search_bar button{
+    font-size: 0.6rem;
+    height: 50px;
+    width: 60px;
+    position: absolute;
+    right: 25px;
+  }
+  .search_bar input{
+    font-size: 0.9rem;
+    height: 30px;
+  }
+}
