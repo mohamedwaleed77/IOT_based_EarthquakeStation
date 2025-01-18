@@ -19,6 +19,7 @@ def trapezoidal_integration(acceleration, elapsed_time, initial_velocity, initia
 # Function to estimate Richter scale based on total displacement
 def estimate_richter(total_displacement):
     if total_displacement > 0:
+        # Estimate Richter magnitude based on total displacement
         richter_magnitude = math.log10(total_displacement / 0.1e-6)
         return richter_magnitude
     return 0
@@ -58,12 +59,24 @@ def send_zero_values(station_id):
         "acceleration": 0,
         "station_id": station_id,
     }
+    global initial_velocity, initial_displacement, total_displacement
+    initial_velocity = 0
+    initial_displacement = 0
     try:
         response = requests.post("http://localhost:3001/addevent", json=data)
         response.raise_for_status()
         print("Zero values sent successfully")
     except requests.RequestException as e:
         print(f"Error sending zero values: {e}")
+
+# Function to reset values properly
+def reset_values(station_id):
+    global initial_velocity, initial_displacement, total_displacement, reset_done
+    initial_velocity = 0
+    initial_displacement = 0
+    total_displacement = 0  # Reset total displacement
+    send_zero_values(station_id)  # Send zero values after reset
+    reset_done = True 
 
 # Main loop
 def main():
@@ -84,22 +97,15 @@ def main():
         zero_sent = False  # Reset flag when data is received
         acceleration = data[0].get('acceleration') if data else 0
 
-
-        #men hena
-
-
-        
-        if acceleration is None and not reset_done:
-            print("Acceleration is 0. Resetting all values.")
-            initial_velocity = 0
-            initial_displacement = 0
-            total_displacement = 0
-            send_zero_values(station_id)
-            reset_done = True
+        if (acceleration is None and not reset_done) or acceleration == 0:
+            if not reset_done:  # Only reset if not already reset
+                print("Acceleration is 0. Resetting all values.")
+                zero_sent = True
+                reset_values(station_id)  # Properly reset and send zero values
             continue
 
         if acceleration is not None:
-            reset_done=False
+            reset_done = False
             current_time = time.time()
             elapsed_time = current_time - last_integration_time
 
@@ -107,16 +113,13 @@ def main():
                 velocity, displacement = trapezoidal_integration(
                     acceleration, elapsed_time, initial_velocity, initial_displacement
                 )
-                total_displacement += displacement
-                richter_magnitude = estimate_richter(total_displacement)
-
+                richter_magnitude = estimate_richter(displacement)
                 print(f"Acceleration: {acceleration} m/s^2")
                 print(f"Velocity: {velocity} m/s")
                 print(f"Displacement: {displacement} meters")
-                print(f"Total Displacement: {total_displacement} meters")
                 print(f"Richter Magnitude: {richter_magnitude}")
 
-                send_data(velocity, displacement, richter_magnitude, acceleration, station_id)
+                send_data(velocity , displacement, richter_magnitude, acceleration, station_id)
 
                 # Update values for the next iteration
                 initial_velocity = velocity

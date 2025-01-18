@@ -94,11 +94,11 @@ export default function Station_info(props) {
         <thead className="text-center">
           <tr>
             <th>Location</th>
-            <th>Acceleration</th>
-            <th>Velocity</th>
-            <th>Displacement</th>
+            <th>Acceleration (m/s<sup>2</sup>)</th>
+            <th>Velocity (m/s)</th>
+            <th>Displacement (m)</th>
             <th>Richter's Magnitude</th>
-            <th>Date</th>
+            <th>Time</th>
           </tr>
         </thead>
         <tbody className="text-center">
