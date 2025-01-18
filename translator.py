@@ -84,6 +84,11 @@ def main():
         zero_sent = False  # Reset flag when data is received
         acceleration = data[0].get('acceleration') if data else 0
 
+
+        #men hena
+
+
+        
         if acceleration is None and not reset_done:
             print("Acceleration is 0. Resetting all values.")
             initial_velocity = 0

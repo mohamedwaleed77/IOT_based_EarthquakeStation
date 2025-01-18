@@ -57,7 +57,7 @@ export default function Home() {
           <p className="text-sky-900">Available Stations</p>
           <input
             type="text"
-            placeholder="Search by Station ID"
+            placeholder="Search by location"
             className="text-xl h-10 w-1/2 text-black rounded-full"
             onChange={(e) => setSearchQuery(e.target.value)}
           />
