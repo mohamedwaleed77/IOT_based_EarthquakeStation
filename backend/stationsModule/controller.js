@@ -45,11 +45,11 @@ export const getStationLastRead=(req,res)=>{
             // Format data with a maximum of 5 decimal places
             const formattedData = data.map((row) => ({
                 ...row,
-                acceleration: row.acceleration ? parseFloat(row.acceleration).toFixed(3) : row.acceleration,
-                velocity: row.velocity ? parseFloat(row.velocity).toFixed(3) : row.velocity,
-                displacement: row.displacement ? parseFloat(row.displacement).toFixed(3) : row.displacement,
+                acceleration: row.acceleration ? parseFloat(row.acceleration).toFixed(8) : row.acceleration,
+                velocity: row.velocity ? parseFloat(row.velocity).toFixed(8) : row.velocity,
+                displacement: row.displacement ? parseFloat(row.displacement).toFixed(8) : row.displacement,
                 richter: row.richter ? parseFloat(row.richter).toFixed(3) : row.richter,
-                date: moment.utc(row.date).local().format("HH:mm:ss"),
+                date: moment.utc(row.date).utcOffset(2).format("hh:mm:ss A"),
             }));
 
             return res.status(200).json({ data: formattedData });

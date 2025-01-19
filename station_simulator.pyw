@@ -13,7 +13,7 @@ station_id = 1
 pause_api = False
 min_acceleration = 0.001
 max_acceleration = 0.006
-MAX_ACCELERATION_LIMIT = 1
+MAX_ACCELERATION_LIMIT = 3
 
 # Function to generate acceleration data and return station ID
 @app.route('/')
@@ -24,7 +24,7 @@ def get_acceleration_data():
         print("API is paused. Returning empty data.")
         return jsonify([])  # Empty response when the API is paused
 
-    return jsonify([{'acceleration': round(acceleration, 4), 'station_id': station_id}])
+    return jsonify([{'acceleration': round(acceleration, 8), 'station_id': station_id}])
 
 # Tkinter GUI setup
 class AccelerationApp:
@@ -52,7 +52,7 @@ class AccelerationApp:
         frame.grid_columnconfigure(1, weight=1)
 
         # Acceleration Label
-        self.acceleration_label = tk.Label(frame, text=f"Acceleration: {round(acceleration, 4)} m/s²", font=('Arial', 14))
+        self.acceleration_label = tk.Label(frame, text=f"Acceleration: {round(acceleration, 8)} m/s²", font=('Arial', 14))
         self.acceleration_label.grid(row=0, column=0, columnspan=2, pady=20)
 
         # Start Button
@@ -121,11 +121,11 @@ class AccelerationApp:
             return
         
         # Generate a random acceleration value within the range
-        acceleration = round(random.uniform(min_acceleration, max_acceleration), 4)
+        acceleration = round(random.uniform(min_acceleration, max_acceleration), 8)
 
         # Update the acceleration label
-        self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 4)} m/s²")
-        print(f"Acceleration: {round(acceleration, 4)} m/s²")
+        self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 8)} m/s²")
+ 
 
     def start_random_acceleration(self):
         global pause_api
@@ -146,10 +146,9 @@ class AccelerationApp:
         global acceleration, pause_api
         self.running = False
         acceleration = 0.0  # Reset the acceleration to 0 when stopping
-        self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 4)} m/s²")
+        self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 8)} m/s²")
 
-        print(f"Acceleration stopped. Reset to {round(acceleration, 4)} m/s²")
-
+     
         # Set the pause API flag to True (permanent)
         pause_api = True
 

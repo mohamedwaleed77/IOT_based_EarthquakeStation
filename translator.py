@@ -19,15 +19,16 @@ def trapezoidal_integration(acceleration, elapsed_time, initial_velocity, initia
 # Function to estimate Richter scale based on total displacement
 def estimate_richter(total_displacement):
     if total_displacement > 0:
-        # Estimate Richter magnitude based on total displacement
+        #negative_log_a0=-0.00000846375 * total_displacement**2 + 0.00996671 * total_displacement + 1.87826
+        #richter_magnitude=math.log10(total_displacement)+negative_log_a0
         richter_magnitude = math.log10(total_displacement / 0.1e-6)
         return richter_magnitude
     return 0
 
 # Function to fetch data from localhost:5045
-def fetch_data():
+def fetch_data(session):
     try:
-        response = requests.get("http://localhost:5045")
+        response = session.get("http://localhost:5045", timeout=1)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -35,7 +36,7 @@ def fetch_data():
         return None
 
 # Function to send data to localhost:3001/addevent
-def send_data(velocity, displacement, richter_magnitude, acceleration, station_id):
+def send_data(session, velocity, displacement, richter_magnitude, acceleration, station_id):
     data = {
         "velocity": velocity,
         "displacement": displacement,
@@ -44,14 +45,15 @@ def send_data(velocity, displacement, richter_magnitude, acceleration, station_i
         "station_id": station_id,
     }
     try:
-        response = requests.post("http://localhost:3001/addevent", json=data)
+        response = session.post("http://localhost:3001/addevent", json=data, timeout=1)
         response.raise_for_status()
         print("Data sent successfully")
     except requests.RequestException as e:
         print(f"Error sending data: {e}")
 
 # Function to send zero values when acceleration is 0 or API is empty
-def send_zero_values(station_id):
+def send_zero_values(session, station_id):
+    global initial_velocity, initial_displacement, total_displacement, last_integration_time
     data = {
         "velocity": 0,
         "displacement": 0,
@@ -59,38 +61,41 @@ def send_zero_values(station_id):
         "acceleration": 0,
         "station_id": station_id,
     }
-    global initial_velocity, initial_displacement, total_displacement
     initial_velocity = 0
     initial_displacement = 0
+    total_displacement = 0
+    last_integration_time = None  # Reset elapsed time marker
     try:
-        response = requests.post("http://localhost:3001/addevent", json=data)
+        response = session.post("http://localhost:3001/addevent", json=data, timeout=1)
         response.raise_for_status()
         print("Zero values sent successfully")
     except requests.RequestException as e:
         print(f"Error sending zero values: {e}")
 
 # Function to reset values properly
-def reset_values(station_id):
-    global initial_velocity, initial_displacement, total_displacement, reset_done
+def reset_values(session, station_id):
+    global initial_velocity, initial_displacement, total_displacement, reset_done, last_integration_time
     initial_velocity = 0
     initial_displacement = 0
     total_displacement = 0  # Reset total displacement
-    send_zero_values(station_id)  # Send zero values after reset
-    reset_done = True 
+    last_integration_time = None  # Reset elapsed time marker
+    send_zero_values(session, station_id)  # Send zero values after reset
+    reset_done = True
 
 # Main loop
 def main():
-    global initial_velocity, initial_displacement, total_displacement, reset_done, zero_sent
+    global initial_velocity, initial_displacement, total_displacement, reset_done, zero_sent, last_integration_time
 
-    last_integration_time = time.time()
+    last_integration_time = None  # Initialize as None
     station_id = 1  # Default station ID
+    session = requests.Session()
 
     while True:
-        data = fetch_data()
+        data = fetch_data(session)
 
         if not data:  # If API is empty
             if not zero_sent:  # Only send zeros once
-                send_zero_values(station_id)
+                send_zero_values(session, station_id)
                 zero_sent = True
             continue
 
@@ -101,30 +106,39 @@ def main():
             if not reset_done:  # Only reset if not already reset
                 print("Acceleration is 0. Resetting all values.")
                 zero_sent = True
-                reset_values(station_id)  # Properly reset and send zero values
+                reset_values(session, station_id)  # Properly reset and send zero values
             continue
 
         if acceleration is not None:
             reset_done = False
+
             current_time = time.time()
+            if last_integration_time is None:
+                last_integration_time = current_time  # Initialize the integration time marker
+
             elapsed_time = current_time - last_integration_time
+            print('elapsed time: ', elapsed_time)
 
             if elapsed_time > 0:  # Process only if some time has passed
                 velocity, displacement = trapezoidal_integration(
                     acceleration, elapsed_time, initial_velocity, initial_displacement
                 )
-                richter_magnitude = estimate_richter(displacement)
+                total_displacement+=displacement
+                richter_magnitude = estimate_richter(total_displacement)
+                velocity -= initial_velocity
+                displacement -= initial_displacement
                 print(f"Acceleration: {acceleration} m/s^2")
                 print(f"Velocity: {velocity} m/s")
                 print(f"Displacement: {displacement} meters")
                 print(f"Richter Magnitude: {richter_magnitude}")
-
-                send_data(velocity , displacement, richter_magnitude, acceleration, station_id)
+                print("total displacement:",total_displacement)
+                send_data(session, velocity, displacement, richter_magnitude, acceleration, station_id)
 
                 # Update values for the next iteration
                 initial_velocity = velocity
                 initial_displacement = displacement
                 last_integration_time = current_time
+ 
 
 if __name__ == "__main__":
     main()
