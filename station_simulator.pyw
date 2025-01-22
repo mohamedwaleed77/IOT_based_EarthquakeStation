@@ -138,7 +138,7 @@ class AccelerationApp:
         end_time = time.time() + duration  # Set the end time based on the duration
         while self.running and time.time() < end_time:
             self.update_acceleration()
-            time.sleep(0.1)
+            time.sleep(0.05)
             self.root.update()  # Update the GUI to avoid freezing
         self.stop_acceleration()  # Stop after the duration ends
 

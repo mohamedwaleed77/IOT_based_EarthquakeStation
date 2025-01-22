@@ -24,13 +24,9 @@ def estimate_richter(total_displacement):
  
     global max_displacement,max_richter
     if total_displacement > 0:
-        #negative_log_a0=-0.00000846375 * (total_displacement)**2 + 0.00996671 * (total_displacement) + 1.87826
-        #richter_magnitude=math.log10(total_displacement)+negative_log_a0
-
-
-        richter_magnitude = math.log10(total_displacement / 1e-6)
-
-        #richter_magnitude=math.log10(total_displacement) + 6
+ 
+        richter_magnitude = math.log10(total_displacement / 0.1e-6)
+ 
         
         if richter_magnitude<max_richter:
             return max_richter
@@ -44,7 +40,7 @@ def estimate_richter(total_displacement):
 # Function to fetch data from localhost:5045
 def fetch_data(session):
     try:
-        response = session.get("http://localhost:5045", timeout=1)
+        response = session.get("http://localhost:5045", timeout=0.1)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -60,7 +56,7 @@ def send_data(session, velocity, displacement, richter_magnitude, acceleration, 
         "station_id": station_id,
     }
     try:
-        response = session.post("http://localhost:3001/addevent", json=data, timeout=1)
+        response = session.post("http://localhost:3001/addevent", json=data, timeout=0.1)
         response.raise_for_status()
         print("Data sent successfully")
     except requests.RequestException as e:
