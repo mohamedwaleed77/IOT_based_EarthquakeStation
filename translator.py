@@ -65,7 +65,7 @@ def send_data(session, velocity, displacement, richter_magnitude, acceleration, 
 # Function to send zero values when acceleration is 0 or API is empty
 def send_zero_values(session, station_id):
     global initial_velocity, initial_displacement,events, total_displacement, last_integration_time,max_displacement,max_richter
-    
+    time.sleep(1)
     data = {
         "velocity": 0,
         "displacement": 0,
