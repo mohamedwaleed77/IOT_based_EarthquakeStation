@@ -6,23 +6,38 @@ import math
 # Constants
 initial_velocity = 0  # Initial velocity in m/s
 initial_displacement = 0  # Initial displacement in meters
-total_displacement = 0  # Total displacement for Richter calculation
+total_displacement=0 # Total displacement for Richter calculation
 reset_done = False  # Flag to ensure resetting and sending zero values only once
 zero_sent = False  # Flag to ensure zeros are sent only once when the API is empty
 events=0
+max_displacement=0
+max_richter=0
 
 # Function to calculate velocity and displacement using trapezoidal integration
 def trapezoidal_integration(acceleration, elapsed_time, initial_velocity, initial_displacement):
-    velocity = initial_velocity + 0.5 * acceleration * elapsed_time
-    displacement = initial_displacement + initial_velocity * elapsed_time + 0.5 * acceleration * (elapsed_time ** 2)
+    velocity = initial_velocity + 0.5*elapsed_time*(acceleration) 
+    displacement = initial_displacement + 0.5 * (velocity+initial_velocity) * elapsed_time 
     return velocity, displacement
 
 # Function to estimate Richter scale based on total displacement
 def estimate_richter(total_displacement):
+ 
+    global max_displacement,max_richter
     if total_displacement > 0:
-        #negative_log_a0=-0.00000846375 * total_displacement**2 + 0.00996671 * total_displacement + 1.87826
+        #negative_log_a0=-0.00000846375 * (total_displacement)**2 + 0.00996671 * (total_displacement) + 1.87826
         #richter_magnitude=math.log10(total_displacement)+negative_log_a0
-        richter_magnitude = math.log10(total_displacement / 0.1e-6)
+
+
+        richter_magnitude = math.log10(total_displacement / 1e-6)
+
+        #richter_magnitude=math.log10(total_displacement) + 6
+        
+        if richter_magnitude<max_richter:
+            return max_richter
+        max_richter=richter_magnitude
+        if richter_magnitude>9.5:
+            return 9.5
+
         return richter_magnitude
     return 0
 
@@ -53,7 +68,8 @@ def send_data(session, velocity, displacement, richter_magnitude, acceleration, 
 
 # Function to send zero values when acceleration is 0 or API is empty
 def send_zero_values(session, station_id):
-    global initial_velocity, initial_displacement, total_displacement, last_integration_time
+    global initial_velocity, initial_displacement,events, total_displacement, last_integration_time,max_displacement,max_richter
+    
     data = {
         "velocity": 0,
         "displacement": 0,
@@ -61,9 +77,12 @@ def send_zero_values(session, station_id):
         "acceleration": 0,
         "station_id": station_id,
     }
+    max_richter=0
+    max_displacement=0
     initial_velocity = 0
     initial_displacement = 0
-    total_displacement = 0
+    total_displacement=0
+    events=0
     last_integration_time = None  # Reset elapsed time marker
     try:
         response = session.post("http://localhost:3001/addevent", json=data, timeout=1)
@@ -74,22 +93,24 @@ def send_zero_values(session, station_id):
 
 # Function to reset values properly
 def reset_values(session, station_id):
-    global initial_velocity, initial_displacement, total_displacement, reset_done, last_integration_time
+    global initial_velocity, initial_displacement, total_displacement, reset_done, last_integration_time,events,max_displacement,max_richter
+    max_richter=0
+    max_displacement=0
     initial_velocity = 0
     initial_displacement = 0
-    total_displacement = 0  # Reset total displacement
+    total_displacement=0  # Reset total displacement
     last_integration_time = None  # Reset elapsed time marker
+    events=0
     send_zero_values(session, station_id)  # Send zero values after reset
     reset_done = True
 
 # Main loop
 def main():
-    global initial_velocity, initial_displacement, total_displacement, reset_done, zero_sent, last_integration_time,events
-
+    global initial_velocity, initial_displacement, total_displacement, reset_done, zero_sent, last_integration_time,events,max_displacement
     last_integration_time = None  # Initialize as None
     station_id = 1  # Default station ID
     session = requests.Session()
-
+    max_displacement=0
     while True:
         data = fetch_data(session)
 
@@ -101,6 +122,7 @@ def main():
 
         zero_sent = False  # Reset flag when data is received
         acceleration = data[0].get('acceleration') if data else 0
+        station_id=data[0].get('station_id') if data else 1
         
         if (acceleration is None and not reset_done) or acceleration == 0:
             if not reset_done:  # Only reset if not already reset
@@ -126,6 +148,8 @@ def main():
                 
                 velocity -= initial_velocity
                 displacement -= initial_displacement
+                if displacement>max_displacement:
+                    max_displacement=displacement
                 total_displacement+=displacement
                 richter_magnitude = estimate_richter(total_displacement)
                 
@@ -135,7 +159,7 @@ def main():
                 print(f"Richter Magnitude: {richter_magnitude}")
                 print("total displacement:",total_displacement)
                 print(f"Events: {events}")
-                send_data(session, velocity, displacement, richter_magnitude, acceleration, station_id)
+                send_data(session, velocity, max_displacement, richter_magnitude, acceleration, station_id)
 
                 # Update values for the next iteration
                 initial_velocity = velocity

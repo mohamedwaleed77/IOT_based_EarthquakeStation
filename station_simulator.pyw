@@ -13,7 +13,7 @@ station_id = 1
 pause_api = False
 min_acceleration = 0.001
 max_acceleration = 0.006
-MAX_ACCELERATION_LIMIT = 3
+MAX_ACCELERATION_LIMIT = 50
 
 # Function to generate acceleration data and return station ID
 @app.route('/')
