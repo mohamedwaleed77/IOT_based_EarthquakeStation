@@ -75,7 +75,8 @@ export const getStationHistory = (req, res) => {
             AND DATE(sub_events.date) = DATE(events.date)
             GROUP BY DATE(sub_events.date)
         )
-        ORDER BY DATE(events.date) DESC;`,
+        ORDER BY DATE(events.date) DESC;
+        LIMIT 1`,
         (err, data) => {
             if (err) {
                 console.error(err);
