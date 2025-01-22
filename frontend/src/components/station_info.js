@@ -43,7 +43,6 @@ export default function Station_info(props) {
   // Periodic fetching for station info (more frequent)
   useEffect(() => {
     fetchStationData(); // Initial fetch for station info
-
     const interval = setInterval(() => {
       fetchStationData();
     }, 100); // Station data updates every 1 second

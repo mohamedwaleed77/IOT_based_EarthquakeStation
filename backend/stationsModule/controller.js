@@ -89,7 +89,7 @@ export const getStationHistory = (req, res) => {
                 velocity: row.velocity ? parseFloat(row.velocity).toFixed(3) : row.velocity,
                 displacement: row.displacement ? parseFloat(row.displacement).toFixed(3) : row.displacement,
                 richter: row.richter ? parseFloat(row.richter).toFixed(3) : row.richter,
-                date: moment.utc(row.date).local().format("YYYY-MM-DD"),
+                date: moment.utc(row.date).utcOffset(2).format("YYYY-MM-DD"),
             }));
 
             return res.status(200).json({ data: formattedData });

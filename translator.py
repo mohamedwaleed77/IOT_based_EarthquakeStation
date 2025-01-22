@@ -9,6 +9,7 @@ initial_displacement = 0  # Initial displacement in meters
 total_displacement = 0  # Total displacement for Richter calculation
 reset_done = False  # Flag to ensure resetting and sending zero values only once
 zero_sent = False  # Flag to ensure zeros are sent only once when the API is empty
+events=0
 
 # Function to calculate velocity and displacement using trapezoidal integration
 def trapezoidal_integration(acceleration, elapsed_time, initial_velocity, initial_displacement):
@@ -32,7 +33,6 @@ def fetch_data(session):
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        print(f"Error fetching data: {e}")
         return None
 
 # Function to send data to localhost:3001/addevent
@@ -84,7 +84,7 @@ def reset_values(session, station_id):
 
 # Main loop
 def main():
-    global initial_velocity, initial_displacement, total_displacement, reset_done, zero_sent, last_integration_time
+    global initial_velocity, initial_displacement, total_displacement, reset_done, zero_sent, last_integration_time,events
 
     last_integration_time = None  # Initialize as None
     station_id = 1  # Default station ID
@@ -101,7 +101,7 @@ def main():
 
         zero_sent = False  # Reset flag when data is received
         acceleration = data[0].get('acceleration') if data else 0
-
+        
         if (acceleration is None and not reset_done) or acceleration == 0:
             if not reset_done:  # Only reset if not already reset
                 print("Acceleration is 0. Resetting all values.")
@@ -111,7 +111,6 @@ def main():
 
         if acceleration is not None:
             reset_done = False
-
             current_time = time.time()
             if last_integration_time is None:
                 last_integration_time = current_time  # Initialize the integration time marker
@@ -120,18 +119,22 @@ def main():
             print('elapsed time: ', elapsed_time)
 
             if elapsed_time > 0:  # Process only if some time has passed
+                events+=1
                 velocity, displacement = trapezoidal_integration(
                     acceleration, elapsed_time, initial_velocity, initial_displacement
                 )
-                total_displacement+=displacement
-                richter_magnitude = estimate_richter(total_displacement)
+                
                 velocity -= initial_velocity
                 displacement -= initial_displacement
+                total_displacement+=displacement
+                richter_magnitude = estimate_richter(total_displacement)
+                
                 print(f"Acceleration: {acceleration} m/s^2")
                 print(f"Velocity: {velocity} m/s")
                 print(f"Displacement: {displacement} meters")
                 print(f"Richter Magnitude: {richter_magnitude}")
                 print("total displacement:",total_displacement)
+                print(f"Events: {events}")
                 send_data(session, velocity, displacement, richter_magnitude, acceleration, station_id)
 
                 # Update values for the next iteration
