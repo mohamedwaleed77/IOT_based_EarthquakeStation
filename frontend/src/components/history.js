@@ -33,20 +33,20 @@ export default function History(props) {
             <thead>
               <tr>
                 <th className="border border-gray-400 px-4 py-2">Date</th>
-                <th className="border border-gray-400 px-4 py-2">Max Acceleration</th>
-                <th className="border border-gray-400 px-4 py-2">Max Velocity</th>
-                <th className="border border-gray-400 px-4 py-2">Max Displacement</th>
-                <th className="border border-gray-400 px-4 py-2">Max Richter</th>
+                <th className="border border-gray-400 px-4 py-2">Acceleration</th>
+                <th className="border border-gray-400 px-4 py-2">Velocity</th>
+                <th className="border border-gray-400 px-4 py-2">Displacement</th>
+                <th className="border border-gray-400 px-4 py-2">Richter</th>
               </tr>
             </thead>
             <tbody>
               {currentRecords.map((item, index) => (
                 <tr key={index}>
-                  <td className="border border-gray-400 px-4 py-2">{item.date}</td>
+                  <td className="border border-gray-400 px-4 py-2">{item.date.slice(0,10)}</td>
                   <td className="border border-gray-400 px-4 py-2">{item.acceleration}</td>
                   <td className="border border-gray-400 px-4 py-2">{item.velocity}</td>
                   <td className="border border-gray-400 px-4 py-2">{item.displacement}</td>
-                  <td className="border border-gray-400 px-4 py-2">{item.richter}</td>
+                  <td className="border border-gray-400 px-4 py-2">{item.richter.slice(0,3)}</td>
                 </tr>
               ))}
             </tbody>

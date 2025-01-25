@@ -25,7 +25,7 @@ def estimate_richter(total_displacement):
     global max_displacement,max_richter
     if total_displacement > 0:
  
-        richter_magnitude = math.log10(total_displacement / 0.1e-6)
+        richter_magnitude = math.log10(total_displacement / 0.01e-6)
  
         
         if richter_magnitude<max_richter:
@@ -35,12 +35,12 @@ def estimate_richter(total_displacement):
             return 9.5
 
         return richter_magnitude
-    return 0
+    return max_richter
 
 # Function to fetch data from localhost:5045
 def fetch_data(session):
     try:
-        response = session.get("http://localhost:5045", timeout=0.1)
+        response = session.get("http://localhost:5045", timeout=0.001)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -48,6 +48,7 @@ def fetch_data(session):
 
 # Function to send data to localhost:3001/addevent
 def send_data(session, velocity, displacement, richter_magnitude, acceleration, station_id):
+    #time.sleep(0.1)
     data = {
         "velocity": velocity,
         "displacement": displacement,
@@ -56,9 +57,9 @@ def send_data(session, velocity, displacement, richter_magnitude, acceleration, 
         "station_id": station_id,
     }
     try:
-        response = session.post("http://localhost:3001/addevent", json=data, timeout=0.1)
+        response = session.post("http://localhost:3001/addevent", json=data, timeout=0.001)
         response.raise_for_status()
-        print("Data sent successfully")
+        #print("Data sent successfully")
     except requests.RequestException as e:
         print(f"Error sending data: {e}")
 
@@ -117,7 +118,7 @@ def main():
             continue
 
         zero_sent = False  # Reset flag when data is received
-        acceleration = data[0].get('acceleration') if data else 0
+        acceleration = abs(data[0].get('acceleration') )if data else 0
         station_id=data[0].get('station_id') if data else 1
         
         if (acceleration is None and not reset_done) or acceleration == 0:
@@ -134,7 +135,7 @@ def main():
                 last_integration_time = current_time  # Initialize the integration time marker
 
             elapsed_time = current_time - last_integration_time
-            print('elapsed time: ', elapsed_time)
+            #print('elapsed time: ', elapsed_time)
 
             if elapsed_time > 0:  # Process only if some time has passed
                 events+=1

@@ -86,6 +86,7 @@ class AccelerationApp:
                     # Parse the file and convert values to floats
                     acceleration_values = [float(value) for line in file for value in line.split()]
                 print(f"Loaded {len(acceleration_values)} acceleration values from {file_path}.")
+                print("events: ", len(acceleration_values))
             except Exception as e:
                 print(f"Error loading file: {e}")
 
@@ -105,8 +106,8 @@ class AccelerationApp:
             acceleration = acceleration_values[current_index]
             self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 8)} m/s²")
             current_index += 1
-            time.sleep(0.05)
             self.root.update()  # Update the GUI to avoid freezing
+            time.sleep(0.001)
 
         if current_index >= len(acceleration_values):
             print("Reached the end of the data file.")

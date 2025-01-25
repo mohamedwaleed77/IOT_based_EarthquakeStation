@@ -43,9 +43,10 @@ export default function Station_info(props) {
   // Periodic fetching for station info (more frequent)
   useEffect(() => {
     fetchStationData(); // Initial fetch for station info
+
     const interval = setInterval(() => {
       fetchStationData();
-    }, 100); // Station data updates every 1 second
+    }, 500); // Station data updates every 1 second
 
     return () => clearInterval(interval); // Cleanup interval on unmount
   }, [id]);
@@ -93,11 +94,11 @@ export default function Station_info(props) {
         <thead className="text-center">
           <tr>
             <th>Location</th>
-            <th>Acceleration (m/s<sup>2</sup>)</th>
-            <th>Velocity (m/s)</th>
-            <th>Displacement (m)</th>
+            <th>Acceleration</th>
+            <th>Velocity</th>
+            <th>Displacement</th>
             <th>Richter's Magnitude</th>
-            <th>Time</th>
+            <th>Date</th>
           </tr>
         </thead>
         <tbody className="text-center">
