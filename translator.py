@@ -25,7 +25,7 @@ def estimate_richter(total_displacement):
     global max_displacement,max_richter
     if total_displacement > 0:
  
-        richter_magnitude = math.log10(total_displacement / 0.01e-6)
+        richter_magnitude = math.log10(total_displacement / 0.01e-6) #0.1
  
         
         if richter_magnitude<max_richter:
@@ -40,7 +40,7 @@ def estimate_richter(total_displacement):
 # Function to fetch data from localhost:5045
 def fetch_data(session):
     try:
-        response = session.get("http://localhost:5045", timeout=0.001)
+        response = session.get("http://localhost:5045", timeout=0.01)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
@@ -48,7 +48,7 @@ def fetch_data(session):
 
 # Function to send data to localhost:3001/addevent
 def send_data(session, velocity, displacement, richter_magnitude, acceleration, station_id):
-    #time.sleep(0.1)
+    time.sleep(0.1)
     data = {
         "velocity": velocity,
         "displacement": displacement,
@@ -57,11 +57,11 @@ def send_data(session, velocity, displacement, richter_magnitude, acceleration, 
         "station_id": station_id,
     }
     try:
-        response = session.post("http://localhost:3001/addevent", json=data, timeout=0.001)
+        response = session.post("http://localhost:3001/addevent", json=data, timeout=0.01)
         response.raise_for_status()
         #print("Data sent successfully")
     except requests.RequestException as e:
-        print(f"Error sending data: {e}")
+        pass
 
 # Function to send zero values when acceleration is 0 or API is empty
 def send_zero_values(session, station_id):
@@ -82,7 +82,7 @@ def send_zero_values(session, station_id):
     events=0
     last_integration_time = None  # Reset elapsed time marker
     try:
-        response = session.post("http://localhost:3001/addevent", json=data, timeout=1)
+        response = session.post("http://localhost:3001/addevent", json=data, timeout=0.01)
         response.raise_for_status()
         print("Zero values sent successfully")
     except requests.RequestException as e:
@@ -150,12 +150,12 @@ def main():
                 total_displacement+=displacement
                 richter_magnitude = estimate_richter(total_displacement)
                 
-                print(f"Acceleration: {acceleration} m/s^2")
-                print(f"Velocity: {velocity} m/s")
-                print(f"Displacement: {displacement} meters")
-                print(f"Richter Magnitude: {richter_magnitude}")
-                print("total displacement:",total_displacement)
-                print(f"Events: {events}")
+                #print(f"Acceleration: {acceleration} m/s^2")
+                #print(f"Velocity: {velocity} m/s")
+                #print(f"Displacement: {displacement} meters")
+                #print(f"Richter Magnitude: {richter_magnitude}")
+                #print("total displacement:",total_displacement)
+                #print(f"Events: {events}")
                 send_data(session, velocity, max_displacement, richter_magnitude, acceleration, station_id)
 
                 # Update values for the next iteration

@@ -42,11 +42,11 @@ export default function History(props) {
             <tbody>
               {currentRecords.map((item, index) => (
                 <tr key={index}>
-                  <td className="border border-gray-400 px-4 py-2">{item.date.slice(0,10)}</td>
+                  <td className="border border-gray-400 px-4 py-2">{String(item.date).slice(0,10)}</td>
                   <td className="border border-gray-400 px-4 py-2">{item.acceleration}</td>
                   <td className="border border-gray-400 px-4 py-2">{item.velocity}</td>
                   <td className="border border-gray-400 px-4 py-2">{item.displacement}</td>
-                  <td className="border border-gray-400 px-4 py-2">{item.richter.slice(0,3)}</td>
+                  <td className="border border-gray-400 px-4 py-2">{String(item.richter).slice(0,5)}</td>
                 </tr>
               ))}
             </tbody>

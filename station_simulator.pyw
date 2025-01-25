@@ -3,10 +3,11 @@ from tkinter import filedialog
 from flask import Flask, jsonify
 import threading
 import time
+ 
 
 # Initialize Flask API
 app = Flask(__name__)
-
+ 
 # Global variables
 acceleration = 0.0
 station_id = 1
@@ -20,7 +21,6 @@ def get_acceleration_data():
     global pause_api, acceleration
 
     if pause_api or not acceleration_values:
-        print("API is paused or no data loaded. Returning empty data.")
         return jsonify([])  # Empty response when the API is paused or no data
 
     return jsonify([{'acceleration': round(acceleration, 8), 'station_id': station_id}])
@@ -107,7 +107,7 @@ class AccelerationApp:
             self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 8)} m/s²")
             current_index += 1
             self.root.update()  # Update the GUI to avoid freezing
-            time.sleep(0.001)
+            time.sleep(0.01)
 
         if current_index >= len(acceleration_values):
             print("Reached the end of the data file.")
