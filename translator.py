@@ -2,167 +2,209 @@ import requests
 import json
 import time
 import math
-
-# Constants
-initial_velocity = 0  # Initial velocity in m/s
-initial_displacement = 0  # Initial displacement in meters
-total_displacement=0 # Total displacement for Richter calculation
-reset_done = False  # Flag to ensure resetting and sending zero values only once
-zero_sent = False  # Flag to ensure zeros are sent only once when the API is empty
-events=0
-max_displacement=0
-max_richter=0
-
-# Function to calculate velocity and displacement using trapezoidal integration
-def trapezoidal_integration(acceleration, elapsed_time, initial_velocity, initial_displacement):
-    velocity = initial_velocity + 0.5*elapsed_time*(acceleration) 
-    displacement = initial_displacement + 0.5 * (velocity+initial_velocity) * elapsed_time 
-    return velocity, displacement
-
-# Function to estimate Richter scale based on total displacement
-def estimate_richter(total_displacement):
- 
-    global max_displacement,max_richter
-    if total_displacement > 0:
- 
-        richter_magnitude = math.log10(total_displacement / 0.01e-6) #0.1
- 
+from collections import deque
+class EarthquakeProcessor:
+    def __init__(self, station_id=1):
+        self.station_id = station_id
+        self.session = requests.Session()
         
-        if richter_magnitude<max_richter:
-            return max_richter
-        max_richter=richter_magnitude
-        if richter_magnitude>9.5:
-            return 9.5
-
-        return richter_magnitude
-    return max_richter
-
-# Function to fetch data from localhost:5045
-def fetch_data(session):
-    try:
-        response = session.get("http://localhost:5045", timeout=0.01)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        return None
-
-# Function to send data to localhost:3001/addevent
-def send_data(session, velocity, displacement, richter_magnitude, acceleration, station_id):
-    time.sleep(0.1)
-    data = {
-        "velocity": velocity,
-        "displacement": displacement,
-        "richter": richter_magnitude,
-        "acceleration": acceleration,
-        "station_id": station_id,
-    }
-    try:
-        response = session.post("http://localhost:3001/addevent", json=data, timeout=0.01)
-        response.raise_for_status()
-        #print("Data sent successfully")
-    except requests.RequestException as e:
-        pass
-
-# Function to send zero values when acceleration is 0 or API is empty
-def send_zero_values(session, station_id):
-    global initial_velocity, initial_displacement,events, total_displacement, last_integration_time,max_displacement,max_richter
-    time.sleep(1)
-    data = {
-        "velocity": 0,
-        "displacement": 0,
-        "richter": 0,
-        "acceleration": 0,
-        "station_id": station_id,
-    }
-    max_richter=0
-    max_displacement=0
-    initial_velocity = 0
-    initial_displacement = 0
-    total_displacement=0
-    events=0
-    last_integration_time = None  # Reset elapsed time marker
-    try:
-        response = session.post("http://localhost:3001/addevent", json=data, timeout=0.01)
-        response.raise_for_status()
-        print("Zero values sent successfully")
-    except requests.RequestException as e:
-        print(f"Error sending zero values: {e}")
-
-# Function to reset values properly
-def reset_values(session, station_id):
-    global initial_velocity, initial_displacement, total_displacement, reset_done, last_integration_time,events,max_displacement,max_richter
-    max_richter=0
-    max_displacement=0
-    initial_velocity = 0
-    initial_displacement = 0
-    total_displacement=0  # Reset total displacement
-    last_integration_time = None  # Reset elapsed time marker
-    events=0
-    send_zero_values(session, station_id)  # Send zero values after reset
-    reset_done = True
-
-# Main loop
-def main():
-    global initial_velocity, initial_displacement, total_displacement, reset_done, zero_sent, last_integration_time,events,max_displacement
-    last_integration_time = None  # Initialize as None
-    station_id = 1  # Default station ID
-    session = requests.Session()
-    max_displacement=0
-    while True:
-        data = fetch_data(session)
-
-        if not data:  # If API is empty
-            if not zero_sent:  # Only send zeros once
-                send_zero_values(session, station_id)
-                zero_sent = True
-            continue
-
-        zero_sent = False  # Reset flag when data is received
-        acceleration = abs(data[0].get('acceleration') )if data else 0
-        station_id=data[0].get('station_id') if data else 1
+        # Constants
+        self.STA_WINDOW = 10
+        self.LTA_WINDOW = 50
+        #the more the diff between sta and lta the more the accuracy but slower to calc richter
+        self.DETECTION_THRESHOLD = 2
         
-        if (acceleration is None and not reset_done) or acceleration == 0:
-            if not reset_done:  # Only reset if not already reset
-                print("Acceleration is 0. Resetting all values.")
-                zero_sent = True
-                reset_values(session, station_id)  # Properly reset and send zero values
-            continue
+        # Initial reset
+        self.reset_state()
 
-        if acceleration is not None:
-            reset_done = False
-            current_time = time.time()
-            if last_integration_time is None:
-                last_integration_time = current_time  # Initialize the integration time marker
+    def reset_state(self):
+        """Full system reset with zero values sent"""
+        # Clear all buffers and states
+        self.event_start = None
+        self.s_wave_detected = False
+        self.acceleration_buffer = deque(maxlen=self.LTA_WINDOW)
+        
+        # Reset physical parameters to match original code
+        self.initial_velocity = 0
+        self.initial_displacement = 0
+        self.total_displacement = 0
+        self.max_displacement = 0
+        self.max_richter = 0
+        
+        # Reset S-wave parameters
+        self.s_wave_time = 0
+        self.ed = 0
+        self.a0_correction = 0
+        
+        # Send zero values immediately
+        self.send_zero_values()
 
-            elapsed_time = current_time - last_integration_time
-            #print('elapsed time: ', elapsed_time)
+    def send_zero_values(self):
+        """Zero-value transmission matching original format"""
+        zero_data = {
+            "velocity": 0,
+            "displacement": 0,
+            "richter": 0,
+            "acceleration": 0,
+            "station_id": self.station_id,
+            "epicenter_distance": 0,
+            "a0_correction": 0
+        }
+        try:
+            response = self.session.post("http://localhost:3001/addevent", 
+                                       json=zero_data, 
+                                       timeout=0.1)
+           
+        except requests.RequestException:
+            pass
+    def fetch_data(self):
+        """Fetch data from the API endpoint"""
+        try:
+            response = self.session.get("http://localhost:5045", timeout=0.1)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            return None
 
-            if elapsed_time > 0:  # Process only if some time has passed
-                events+=1
-                velocity, displacement = trapezoidal_integration(
-                    acceleration, elapsed_time, initial_velocity, initial_displacement
-                )
+    def send_data(self, result):
+        """Send processed data to the server"""
+        data = {
+            "velocity": result['velocity'],
+            "displacement": result['displacement'],
+            "richter": result['richter'],
+            "acceleration": result['acceleration'],
+            "station_id": self.station_id,
+            "epicenter_distance": result['epicenter_distance'],
+            "a0_correction": result['a0_correction']
+        }
+        try:
+            response = self.session.post("http://localhost:3001/addevent", json=data, timeout=0.1)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            print(f"Error sending data: {e}")
+
+    def trapezoidal_integration(self, acceleration, elapsed_time):
+        """EXACT replica of original integration method"""
+        # Original calculation
+        velocity = self.initial_velocity + 0.5 * elapsed_time * acceleration
+        displacement = self.initial_displacement + 0.5 * (
+            velocity + self.initial_velocity
+        ) * elapsed_time
+        
+        # Original delta calculation
+        delta_v = velocity - self.initial_velocity
+        delta_d = displacement - self.initial_displacement
+        return delta_v, delta_d,displacement
+
+    def detect_S_wave(self):
+        """Detect S-wave using STA/LTA ratio"""
+        if len(self.acceleration_buffer) < self.LTA_WINDOW:
+            return None
+        
+        sta = sum(abs(x) for x in list(self.acceleration_buffer)[-self.STA_WINDOW:]) / self.STA_WINDOW
+        lta = sum(abs(x) for x in list(self.acceleration_buffer)[-self.LTA_WINDOW:]) / self.LTA_WINDOW
+        
+        return sta / lta if lta != 0 else 0
+
+    def calculate_epicenter(self, s_wave_delay,current_time):
+        """Calculate epicenter distance and A₀ correction"""
+        if not s_wave_delay or s_wave_delay <= 0:
+            return 0.0, 0.0
+        
+        ed = 8.4* (s_wave_delay)
+        x = ed
+        a0_correction = -1.60775e-10 * x**4 + 2.1429e-7 * x**3 - 0.000100878 * x**2 + 0.023678 * x + 1.45704
+        print(x,a0_correction )
+        return ed, a0_correction 
+
+    def estimate_richter(self, total_displacement):
+        """Estimate Richter magnitude (updated)"""
+        if not self.s_wave_detected or self.a0_correction == 0:
+            return 0  # Don't calculate before S-wave detection
+       
+        if total_displacement > 0:
+            richter = math.log10(total_displacement)+self.a0_correction 
+            print(richter,self.a0_correction,total_displacement)
+            return min(max(richter, 0), 9.5)
+        return 0
+
+    def main_loop(self):
+        """Main processing loop matching original code flow"""
+        while True:
+            try:
+               
+                data = self.fetch_data()
                 
-                velocity -= initial_velocity
-                displacement -= initial_displacement
-                if displacement>max_displacement:
-                    max_displacement=displacement
-                total_displacement+=displacement
-                richter_magnitude = estimate_richter(total_displacement)
-                
-                #print(f"Acceleration: {acceleration} m/s^2")
-                #print(f"Velocity: {velocity} m/s")
-                #print(f"Displacement: {displacement} meters")
-                #print(f"Richter Magnitude: {richter_magnitude}")
-                #print("total displacement:",total_displacement)
-                #print(f"Events: {events}")
-                send_data(session, velocity, max_displacement, richter_magnitude, acceleration, station_id)
+                # Immediate reset on empty data or zero acceleration
+                if not data or data[0]['acceleration']==0:
+                    self.reset_state()
+                    time.sleep(0.1)
+                    continue
 
-                # Update values for the next iteration
-                initial_velocity = velocity
-                initial_displacement = displacement
-                last_integration_time = current_time
- 
+                # Process valid data
+                acceleration = abs(data[0]['acceleration'])*9.82#remove 9.82 in real test yasta as the data in g-force
+                if acceleration == 0:
+                    self.reset_state()
+                    time.sleep(0.1)
+                    continue
+                current_time = time.time()
+                
+                # Initialize event timing
+                if not self.event_start:
+                    self.event_start = current_time
+                    self.last_integration_time = current_time
+                    print("New event detected - starting measurements")
+
+                    continue  # Skip first frame for delta calculation
+
+                # Calculate time delta
+                elapsed_time = current_time - self.last_integration_time
+                if elapsed_time <= 0:
+                    continue
+
+                # Perform integration (original method)
+                delta_v, delta_d ,temp= self.trapezoidal_integration(acceleration, elapsed_time)
+                # Update totals as in original code
+                #self.total_displacement += temp #or +=delta_d
+                self.total_displacement +=delta_d
+                self.max_displacement = max(self.max_displacement, delta_d)
+                
+                # Update initial values (EXACT original approach)
+                self.initial_velocity = delta_v
+                self.initial_displacement = delta_d
+                self.last_integration_time = current_time
+
+                # S-wave detection
+                self.acceleration_buffer.append(acceleration)
+                
+                ratio = self.detect_S_wave()
+                if ratio and ratio > self.DETECTION_THRESHOLD:
+                        self.s_wave_detected = True
+                        self.s_wave_time = current_time - self.event_start
+                        self.ed, self.a0_correction = self.calculate_epicenter(self.s_wave_time,current_time)
+                        print(f"S-wave detected at {self.s_wave_time:.2f}s")
+
+                # Prepare and send results
+                result = {
+                    'velocity':  self.initial_velocity,
+                    'displacement':self.initial_displacement ,
+                    #'richter': self.estimate_richter(self.max_displacement),#or total_displacemen?
+                    'richter': self.estimate_richter(self.total_displacement),#or total_displacemen?
+                    'acceleration': acceleration,
+                    'epicenter_distance': self.ed,
+                    'a0_correction': self.a0_correction
+                }
+                self.send_data(result)
+
+            except KeyboardInterrupt:
+                print("Shutting down...")
+                break
+            except Exception as e:
+                print(f"Error: {e}")
+                self.reset_state()
+                time.sleep(1)
+
 
 if __name__ == "__main__":
-    main()
+    processor = EarthquakeProcessor(station_id=1)
+    processor.main_loop()

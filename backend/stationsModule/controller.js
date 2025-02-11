@@ -70,22 +70,39 @@ export const getStationHistory = (req, res) => {
     `;
 
     const maxRichterQuery = `
-        SELECT DISTINCT 
-            events.acceleration, 
-            events.velocity, 
-            events.displacement, 
-            events.richter, 
-            events.date
-        FROM events
-        WHERE events.station_id = ?
-        AND events.richter IN (
-            SELECT MAX(richter)
-            FROM events AS sub_events
-            WHERE sub_events.station_id = events.station_id 
-            AND DATE(sub_events.date) = DATE(events.date)
-            GROUP BY DATE(sub_events.date)
-        )
-        ORDER BY events.date DESC;
+SELECT 
+  acceleration, 
+  velocity, 
+  displacement, 
+  richter, 
+  date
+FROM (
+  SELECT 
+    e.*,
+    @row_number := IF(
+      @current_date = DATE(date), 
+      @row_number + 1, 
+      1
+    ) AS rn,
+    @current_date := DATE(date) AS event_date
+  FROM 
+    events e,
+    (SELECT @row_number := 0, @current_date := NULL) AS vars
+  WHERE 
+    e.station_id = ?
+    AND e.richter = (
+      SELECT MAX(richter)
+      FROM events
+      WHERE station_id = e.station_id
+        AND DATE(date) = DATE(e.date)
+    )
+  ORDER BY 
+    DATE(date) DESC,  -- Group by date
+    richter DESC,      -- Prioritize max Richter
+    date DESC          -- Break ties with latest timestamp
+) AS ranked
+WHERE rn = 1  -- Keep only the first row per day
+ORDER BY date DESC;
     `;
 
     connection.execute(lastReadQuery, [id], (err1, lastReadData) => {
