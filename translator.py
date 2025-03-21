@@ -2,7 +2,72 @@ import requests
 import json
 import time
 import math
+import socket
+import numpy as np
+import matplotlib.pyplot as plt
 from collections import deque
+import time
+
+
+
+UDP_IP = "0.0.0.0"  # Listen on all interfaces
+UDP_PORT = 5005     # Listening port
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.bind((UDP_IP, UDP_PORT))
+sock.settimeout(2.0)  # Set timeout to prevent blocking forever
+
+def compute_fft_peak_frequency(acceleration_data, fs):
+    # Number of data points
+    n = len(acceleration_data)
+
+    if n == 0:
+        raise ValueError("Error: The acceleration data array is empty.")
+
+    # Compute FFT
+    fft_result = np.fft.fft(acceleration_data)
+    frequencies = np.fft.fftfreq(n, d=1/fs)
+
+    # Take only positive frequencies
+    pos_mask = frequencies > 0
+    frequencies = frequencies[pos_mask]
+    fft_magnitude = np.abs(fft_result[pos_mask])
+     
+    # Find peak frequency
+    peak_index = np.argmax(fft_magnitude)
+    peak_frequency = frequencies[peak_index]
+    '''
+    plt.figure(figsize=(8, 4))
+    plt.plot(frequencies, fft_magnitude, label="FFT Magnitude")
+    plt.xlabel("Frequency (Hz)")
+    plt.ylabel("Magnitude")
+    plt.title("FFT Spectrum of Acceleration Data")
+    plt.grid()
+    plt.legend()
+    plt.show()'''
+    if (peak_frequency>0.001 and peak_frequency<0.1) or (peak_frequency>1 and peak_frequency<20):
+        return True
+    return False
+
+def send_message(message, target_ip, target_port):
+    """Send a UDP message to the specified target IP and port."""
+    try:
+        sock.sendto(str(message).encode(), (target_ip, target_port))
+        print(f"Sent to {target_ip}:{target_port} -> {message}")
+    except Exception as e:
+        print(f"Error sending message: {e}")
+
+def movement_detection():
+    try:
+        data, addr = sock.recvfrom(1024)  # Receive message
+        message = data.decode()
+        value = float(message.split(":")[1])  # Extract acceleration value
+        return value, addr
+    except socket.timeout:
+        return None, None
+    except (ValueError, IndexError):
+        return None, None
+
 class EarthquakeProcessor:
     def __init__(self, station_id=1):
         self.station_id = station_id
@@ -58,15 +123,42 @@ class EarthquakeProcessor:
         except requests.RequestException:
             pass
     def fetch_data(self):
-        """Fetch data from the API endpoint"""
+        
+        """Fetch acceleration data from UDP, extract station_id and acceleration, and return as JSON."""
         try:
-            response = self.session.get("http://localhost:5045", timeout=0.1)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            return None
+            data, addr = sock.recvfrom(1024)  # Receive message
+            message = data.decode().strip()
+            print( data )
+            print(addr)
+            
+            # Expecting format: "Station X: Y.YYYYYYYY"
+            parts = message.split(":")  
+ 
+            station_part = parts[0].strip()  # "Station 1"
+            acceleration_part = parts[1].strip()  # "0.00000000"
+
+            # Extract station number
+            if not station_part.lower().startswith("station"):
+                return None  # Invalid format
+
+            station_id = station_part.split()[1]  # Extract "1" from "Station 1"
+
+            # Convert acceleration to float
+            acceleration = float(acceleration_part)  
+            
+            return {
+                "station_id": station_id,
+                "acceleration": acceleration
+            }
+            
+
+        except socket.timeout:
+            return None  # Timeout case
+        except (ValueError, IndexError):
+            return None  #
 
     def send_data(self, result):
+        
         """Send processed data to the server"""
         data = {
             "velocity": result['velocity'],
@@ -132,79 +224,96 @@ class EarthquakeProcessor:
         """Main processing loop matching original code flow"""
         while True:
             try:
-               
+                # Fetch new data
                 data = self.fetch_data()
-                
-                # Immediate reset on empty data or zero acceleration
-                if not data or data[0]['acceleration']==0:
+                if not data:  # If fetch_data() returns None, skip iteration
+                    print("No valid data received. Skipping...")
                     self.reset_state()
-                    time.sleep(0.1)
-                    continue
+                    break
 
-                # Process valid data
-                acceleration = abs(data[0]['acceleration'])*9.82#remove 9.82 in real test yasta as the data in g-force
-                if acceleration == 0:
-                    self.reset_state()
-                    time.sleep(0.1)
-                    continue
+                acceleration = abs(data['acceleration'])   # Convert to m/s²
+
+ 
+ 
                 current_time = time.time()
-                
-                # Initialize event timing
+
+                # First-time event setup
                 if not self.event_start:
                     self.event_start = current_time
                     self.last_integration_time = current_time
                     print("New event detected - starting measurements")
+                    continue  # Skip first frame
 
-                    continue  # Skip first frame for delta calculation
-
-                # Calculate time delta
+                # Compute time elapsed
                 elapsed_time = current_time - self.last_integration_time
                 if elapsed_time <= 0:
                     continue
 
-                # Perform integration (original method)
-                delta_v, delta_d ,temp= self.trapezoidal_integration(acceleration, elapsed_time)
-                # Update totals as in original code
-                #self.total_displacement += temp #or +=delta_d
-                self.total_displacement +=delta_d
+                # Perform integration
+                delta_v, delta_d, temp = self.trapezoidal_integration(acceleration, elapsed_time)
+                self.total_displacement += delta_d
                 self.max_displacement = max(self.max_displacement, delta_d)
-                
-                # Update initial values (EXACT original approach)
+
+                # Update initial values
                 self.initial_velocity = delta_v
                 self.initial_displacement = delta_d
                 self.last_integration_time = current_time
 
                 # S-wave detection
                 self.acceleration_buffer.append(acceleration)
-                
                 ratio = self.detect_S_wave()
                 if ratio and ratio > self.DETECTION_THRESHOLD:
-                        self.s_wave_detected = True
-                        self.s_wave_time = current_time - self.event_start
-                        self.ed, self.a0_correction = self.calculate_epicenter(self.s_wave_time,current_time)
-                        print(f"S-wave detected at {self.s_wave_time:.2f}s")
+                    self.s_wave_detected = True
+                    self.s_wave_time = current_time - self.event_start
+                    self.ed, self.a0_correction = self.calculate_epicenter(self.s_wave_time, current_time)
+                    print(f"S-wave detected at {self.s_wave_time:.2f}s")
 
                 # Prepare and send results
                 result = {
-                    'velocity':  self.initial_velocity,
-                    'displacement':self.initial_displacement ,
-                    #'richter': self.estimate_richter(self.max_displacement),#or total_displacemen?
-                    'richter': self.estimate_richter(self.total_displacement),#or total_displacemen?
+                    'velocity': self.initial_velocity,
+                    'displacement': self.initial_displacement,
+                    'richter': self.estimate_richter(self.total_displacement),
                     'acceleration': acceleration,
                     'epicenter_distance': self.ed,
                     'a0_correction': self.a0_correction
                 }
+                
+                print("Sending result:", result)  # Debug output
                 self.send_data(result)
 
             except KeyboardInterrupt:
                 print("Shutting down...")
                 break
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"Error: {e}")  # Print the actual error message
                 self.reset_state()
                 time.sleep(1)
 
-
 if __name__ == "__main__":
-    processor = EarthquakeProcessor(station_id=1)
-    processor.main_loop()
+    fs =200  # Sampling frequency (Hz)
+
+    while True:
+        station_id=0
+        acceleration_data = []
+        sender_address = None
+
+        # Collect 200 acceleration samples
+        while len(acceleration_data) < fs:
+            acc, addr = movement_detection()
+            if acc is not None:
+                acceleration_data.append(acc)
+                sender_address = addr  # Store sender's address for response
+            else:
+                print("no possibility for earthquake")
+                acceleration_data=[]
+
+        if sender_address:
+            is_earthquake = compute_fft_peak_frequency(acceleration_data, fs)
+            if not is_earthquake:
+                send_message(0, sender_address[0], sender_address[1])  # Send response
+            print(f"Is earthquake?: {is_earthquake}")
+            if is_earthquake:
+                time.sleep(1)
+                earthquake_processor = EarthquakeProcessor()
+                earthquake_processor.main_loop() 
+           
