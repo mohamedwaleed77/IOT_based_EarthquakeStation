@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import History from './history';
- 
+import React, { useEffect, useState } from "react";
+import History from "./history";
 
 export default function Station_info(props) {
   let id = props.station_id;
@@ -11,56 +10,66 @@ export default function Station_info(props) {
   let [iscollapsed, iscollapsed_setter] = useState(false);
   let [stationinfo, setstationinfo] = useState([]);
   let [history, setHistory] = useState([]);
-  let [loading, setLoading] = useState(true); // Added loading state for station info
-  let [loadingHistory, setLoadingHistory] = useState(true); // Added loading state for history
+  let [loading, setLoading] = useState(true); // For station info
+  let [loadingHistory, setLoadingHistory] = useState(true); // For history
 
-  // Function to fetch station data
-  const fetchStationData = async () => {
-    try {
-      const response = await fetch(`http://localhost:3001/stations/${id}`);
-      const result = await response.json();
-      setstationinfo(result.data);
-      setLoading(false); // Set loading to false when station data is fetched
-    } catch (error) {
-      console.error('Error fetching station data:', error);
-      setLoading(false); // Handle loading state even on error
-    }
-  };
-
-  // Function to fetch history data
+  // Function to fetch history data using REST remains unchanged
   const fetchHistoryData = async () => {
     try {
       const response = await fetch(`http://localhost:3001/history/${id}`);
       const result = await response.json();
       setHistory(result.data);
-      setLoadingHistory(false); // Set loading to false when history data is fetched
+      setLoadingHistory(false);
     } catch (error) {
-      console.error('Error fetching history data:', error);
-      setLoadingHistory(false); // Handle loading state even on error
+      console.error("Error fetching history data:", error);
+      setLoadingHistory(false);
     }
   };
 
-  // Periodic fetching for station info (more frequent)
+  // Client-side WebSocket connection for real-time station data
   useEffect(() => {
-    fetchStationData(); // Initial fetch for station info
+    const ws = new WebSocket("ws://localhost:3001");
 
-    const interval = setInterval(() => {
-      fetchStationData();
-    }, 500); // Station data updates every 1 second
+    ws.onopen = () => {
+      console.log("WebSocket connected for station info");
+      ws.send(JSON.stringify({ type: "getStationLastRead", station_id: id }));
+    };
 
-    return () => clearInterval(interval); // Cleanup interval on unmount
+    ws.onmessage = (event) => {
+     
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "stationLastRead" && data.data.station_id === id) {
+          setstationinfo([data.data]); 
+          setLoading(false);
+ 
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+        setLoading(false);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed for station info");
+    };
+ 
   }, [id]);
 
-  // Periodic fetching for history data (less frequent)
+  // Keep REST polling for history data every 5 seconds
   useEffect(() => {
     fetchHistoryData(); // Initial fetch for history data
 
     const interval = setInterval(() => {
       fetchHistoryData();
-    }, 5000); // History data updates every 5 seconds
+    }, 5000);
 
-    return () => clearInterval(interval); // Cleanup interval on unmount
-  }, []);
+    return () => clearInterval(interval);
+  }, [id]);
 
   useEffect(() => {
     iscollapsed_setter(false);
@@ -71,73 +80,69 @@ export default function Station_info(props) {
 
   function toggle_collapse() {
     iscollapsed_setter(!iscollapsed);
-    if (!iscollapsed) {
-      arrow_setter(
-        <div className="rounded-full ml-2 block bg-sky-900 h-4 w-4"></div>
-      );
-    } else {
-      arrow_setter(
-        <div className="rounded-full ml-2 block bg-black h-4 w-4"></div>
-      );
-    }
+    arrow_setter(
+      <div
+        className={`rounded-full ml-2 block h-4 w-4 ${
+          iscollapsed ? "bg-black" : "bg-sky-900"
+        }`}
+      ></div>
+    );
   }
-
-  let station = (
-    <div
-      className="bg-gray-600 text-white px-10 w-full overflow-hidden"
-      style={{
-        maxHeight: !iscollapsed ? '0' : '500px',
-        transition: 'max-height 0.15s ease-in-out',
-      }}
-    >
-      <table className="w-full">
-        <thead className="text-center">
-          <tr>
-            <th>Location</th>
-            <th>Acceleration</th>
-            <th>Velocity</th>
-            <th>Displacement</th>
-            <th>Richter's Magnitude</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody className="text-center">
-          {loading ? (
-            <tr>
-              <td colSpan="6">Loading...</td>
-            </tr>
-          ) : stationinfo.length > 0 ? (
-            <tr>
-              <td>{stationinfo[0]['location']}</td>
-              <td>{stationinfo[0]['acceleration']}</td>
-              <td>{stationinfo[0]['velocity']}</td>
-              <td>{stationinfo[0]['displacement']}</td>
-              <td>{stationinfo[0]['richter']}</td>
-              <td>{stationinfo[0]['date']}</td>
-            </tr>
-          ) : (
-            <tr>
-              <td colSpan="6">No Data Available</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-      <div>
-        <p className="bg-gray-300 text-black text-center">History</p>
-        <History info={history}></History> {/* Passing the history data to the component */}
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex flex-col justify-center items-center border border-black">
       <button
-        className="flex w-full bg-gray-300 h-full items-center gap-2 text-lg hover:bg-gray-500 "
+        className="flex w-full bg-gray-300 h-full items-center gap-2 text-lg hover:bg-gray-500"
         onClick={toggle_collapse}
       >
         {arrow} Station ({id})
       </button>
-      {station}
+
+      <div
+        className="bg-gray-600 text-white px-10 w-full overflow-hidden"
+        style={{
+          maxHeight: !iscollapsed ? "0" : "500px",
+          transition: "max-height 0.15s ease-in-out",
+        }}
+      >
+        <table className="w-full">
+          <thead className="text-center">
+            <tr>
+              <th>Location</th>
+              <th>Acceleration</th>
+              <th>Velocity</th>
+              <th>Displacement</th>
+              <th>Richter's Magnitude</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody className="text-center">
+            {loading ? (
+              <tr>
+                <td colSpan="6">No movement detected</td>
+              </tr>
+            ) : stationinfo.length > 0 ? (
+              <tr>
+                <td>{stationinfo[0]?.location}</td>
+                <td>{stationinfo[0]?.acceleration}</td>
+                <td>{stationinfo[0]?.velocity}</td>
+                <td>{stationinfo[0]?.displacement}</td>
+                <td>{stationinfo[0]?.richter}</td>
+                <td>{stationinfo[0]?.date}</td>
+              </tr>
+            ) : (
+              <tr>
+                <td colSpan="6">No Data Available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        <div>
+          <p className="bg-gray-300 text-black text-center">History</p>
+          <History info={history} />
+        </div>
+      </div>
     </div>
   );
 }

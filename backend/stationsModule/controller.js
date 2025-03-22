@@ -1,17 +1,7 @@
 import { connect } from "../database/database.js";
 import moment from "moment";  
-function getCurrentDateTime() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
+import { WebSocketServer } from 'ws';
 
-    // Return as an object with a date property
-    return { date: `${year}-${month}-${day} ${hours}:${minutes}:${seconds}` };
-}
 
 const connection = connect;
 export const getAllStations = (req,res)=>{
@@ -20,43 +10,53 @@ export const getAllStations = (req,res)=>{
     })
 }
  
-export const addEvent=async (req,res)=>{
-    const { station_id, acceleration,velocity,displacement,richter } = req.body; 
-    const {date}=getCurrentDateTime()
 
-    await connection.execute(`INSERT INTO events (station_id,acceleration,velocity,displacement,richter,date) VALUES('${station_id}','${acceleration}','${velocity}','${displacement}','${richter}','${date}')`)
-    return res.status(200).json({message:"added event"})
+function getCurrentDateTime() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
-export const getStationLastRead=(req,res)=>{
-    const {id}=req.params;
-    connection.execute(`
-            SELECT events.station_id, events.acceleration, events.date, station_table.location,velocity,displacement,richter
-            FROM station_table
-            LEFT JOIN events ON events.station_id = station_table.station_id
-            WHERE station_table.station_id = '${id}'
-            ORDER BY events.date DESC
-            LIMIT 1
-        `,(err, data) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ message: "Database query failed" });
+
+export const addEvent = async (ws, wsServer, message) => {
+    try {
+        const data = JSON.parse(message);
+        const { station_id, acceleration, velocity, displacement, richter } = data;
+        const date = getCurrentDateTime();
+
+        // Insert the new event into the database using safe values
+        await connection.execute(
+            `INSERT INTO events (station_id, acceleration, velocity, displacement, richter, date) VALUES (?, ?, ?, ?, ?, ?)`,
+            [station_id, acceleration, velocity, displacement, richter, date]
+        );
+ 
+
+        // Format the data for broadcasting
+        const formattedData = {
+            station_id,
+            acceleration: parseFloat(acceleration).toFixed(8),
+            velocity: parseFloat(velocity).toFixed(8),
+            displacement: parseFloat(displacement).toFixed(8),
+            richter: parseFloat(richter).toFixed(8),
+            date: moment.utc(date).utcOffset(2).format("hh:mm:ss A"),
+        };
+
+        // Broadcast directly to all WebSocket clients
+        wsServer.clients.forEach(client => {
+            if (client.readyState === 1) { // 1 means WebSocket.OPEN
+                client.send(JSON.stringify({ type: "stationLastRead", data: formattedData }));
             }
-            
-            // Format data with a maximum of 5 decimal places
-            const formattedData = data.map((row) => ({
-                ...row,
-                acceleration: row.acceleration ? parseFloat(row.acceleration).toFixed(8) : row.acceleration,
-                velocity: row.velocity ? parseFloat(row.velocity).toFixed(8) : row.velocity,
-                displacement: row.displacement ? parseFloat(row.displacement).toFixed(8) : row.displacement,
-                richter: row.richter ? parseFloat(row.richter).toFixed(8) : row.richter,
-                date: moment.utc(row.date).utcOffset(2).format("hh:mm:ss A"),
-            }));
+        });
+ 
 
-            return res.status(200).json({ data: formattedData });
-        })
-        
-}
+    } catch (error) {
 
+    }
+};
 
 export const getStationHistory = (req, res) => {
     const { id } = req.params;

@@ -4,6 +4,7 @@ import time
 import math
 import socket
 import numpy as np
+import websocket
 import matplotlib.pyplot as plt
 from collections import deque
 import time
@@ -16,7 +17,7 @@ UDP_PORT = 5005     # Listening port
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((UDP_IP, UDP_PORT))
 sock.settimeout(2.0)  # Set timeout to prevent blocking forever
-
+last_richter=0
 def compute_fft_peak_frequency(acceleration_data, fs):
     # Number of data points
     n = len(acceleration_data)
@@ -53,7 +54,7 @@ def send_message(message, target_ip, target_port):
     """Send a UDP message to the specified target IP and port."""
     try:
         sock.sendto(str(message).encode(), (target_ip, target_port))
-        print(f"Sent to {target_ip}:{target_port} -> {message}")
+        #print(f"Sent to {target_ip}:{target_port} -> {message}")
     except Exception as e:
         print(f"Error sending message: {e}")
 
@@ -105,32 +106,39 @@ class EarthquakeProcessor:
         self.send_zero_values()
 
     def send_zero_values(self):
-        """Zero-value transmission matching original format"""
+        """Send zero-values using the persistent WebSocket connection"""
+
+        if not hasattr(self, 'ws') or self.ws is None:
+            import websocket  # Import inside to avoid unnecessary dependency if not used
+            self.ws = websocket.WebSocket()
+            self.ws.connect("ws://localhost:3001")  # Connect only once
+
         zero_data = {
+            "type": "addEvent",
             "velocity": 0,
             "displacement": 0,
             "richter": 0,
             "acceleration": 0,
-            "station_id": self.station_id,
-            "epicenter_distance": 0,
-            "a0_correction": 0
+            "station_id": self.station_id
         }
+
         try:
-            response = self.session.post("http://localhost:3001/addevent", 
-                                       json=zero_data, 
-                                       timeout=0.1)
-           
-        except requests.RequestException:
-            pass
+            self.ws.send(json.dumps(zero_data))  # Send data over WebSocket
+            print("Zero-values sent successfully via WebSocket")
+
+ 
+
+        except Exception as e:
+            print(f"Error sending zero-values via WebSocket: {e}")
+            
     def fetch_data(self):
         
         """Fetch acceleration data from UDP, extract station_id and acceleration, and return as JSON."""
+            
         try:
             data, addr = sock.recvfrom(1024)  # Receive message
             message = data.decode().strip()
-            print( data )
-            print(addr)
-            
+ 
             # Expecting format: "Station X: Y.YYYYYYYY"
             parts = message.split(":")  
  
@@ -138,8 +146,6 @@ class EarthquakeProcessor:
             acceleration_part = parts[1].strip()  # "0.00000000"
 
             # Extract station number
-            if not station_part.lower().startswith("station"):
-                return None  # Invalid format
 
             station_id = station_part.split()[1]  # Extract "1" from "Station 1"
 
@@ -153,27 +159,32 @@ class EarthquakeProcessor:
             
 
         except socket.timeout:
-            return None  # Timeout case
-        except (ValueError, IndexError):
-            return None  #
+                print("timeout")
+                return None  # Timeout case
+       # except (ValueError, IndexError):
+       #     return None  #
 
-    def send_data(self, result):
-        
-        """Send processed data to the server"""
-        data = {
+    def send_data(self,result):
+        """Send event data using a synchronous WebSocket connection"""
+        ws = websocket.WebSocket()
+        ws.connect("ws://localhost:3001")  # Connect to WebSocket server
+
+        event_data = {
+            "type": "addEvent",
             "velocity": result['velocity'],
             "displacement": result['displacement'],
             "richter": result['richter'],
             "acceleration": result['acceleration'],
-            "station_id": self.station_id,
-            "epicenter_distance": result['epicenter_distance'],
-            "a0_correction": result['a0_correction']
+            "station_id": self.station_id
         }
-        try:
-            response = self.session.post("http://localhost:3001/addevent", json=data, timeout=0.1)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            print(f"Error sending data: {e}")
+        #time.sleep(0.1)#delay to make it readable
+        ws.send(json.dumps(event_data))  # Send event data
+  
+
+ 
+
+       
+
 
     def trapezoidal_integration(self, acceleration, elapsed_time):
         """EXACT replica of original integration method"""
@@ -211,12 +222,15 @@ class EarthquakeProcessor:
 
     def estimate_richter(self, total_displacement):
         """Estimate Richter magnitude (updated)"""
+        global last_richter
         if not self.s_wave_detected or self.a0_correction == 0:
             return 0  # Don't calculate before S-wave detection
        
         if total_displacement > 0:
             richter = math.log10(total_displacement)+self.a0_correction 
-            print(richter,self.a0_correction,total_displacement)
+            if richter<last_richter:
+                return last_richter
+            last_richter=richter
             return min(max(richter, 0), 9.5)
         return 0
 
@@ -228,6 +242,7 @@ class EarthquakeProcessor:
                 data = self.fetch_data()
                 if not data:  # If fetch_data() returns None, skip iteration
                     print("No valid data received. Skipping...")
+                    
                     self.reset_state()
                     break
 
@@ -278,7 +293,7 @@ class EarthquakeProcessor:
                     'a0_correction': self.a0_correction
                 }
                 
-                print("Sending result:", result)  # Debug output
+                #print("Sending result:", result)  # Debug output
                 self.send_data(result)
 
             except KeyboardInterrupt:
@@ -310,10 +325,12 @@ if __name__ == "__main__":
         if sender_address:
             is_earthquake = compute_fft_peak_frequency(acceleration_data, fs)
             if not is_earthquake:
+                print(acceleration_data[0])
                 send_message(0, sender_address[0], sender_address[1])  # Send response
             print(f"Is earthquake?: {is_earthquake}")
             if is_earthquake:
                 time.sleep(1)
+                last_richter=0
                 earthquake_processor = EarthquakeProcessor()
                 earthquake_processor.main_loop() 
            
