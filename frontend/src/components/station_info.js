@@ -3,7 +3,7 @@ import History from "./history";
 
 export default function Station_info(props) {
   let id = props.station_id;
-
+  let location=props.location;
   let [arrow, arrow_setter] = useState(
     <div className="rounded-full ml-2 bg-black h-4 w-4"></div>
   );
@@ -123,7 +123,7 @@ export default function Station_info(props) {
               </tr>
             ) : stationinfo.length > 0 ? (
               <tr>
-                <td>{stationinfo[0]?.location}</td>
+                <td>{location}</td>
                 <td>{stationinfo[0]?.acceleration}</td>
                 <td>{stationinfo[0]?.velocity}</td>
                 <td>{stationinfo[0]?.displacement}</td>

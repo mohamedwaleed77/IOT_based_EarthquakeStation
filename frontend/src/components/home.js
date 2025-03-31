@@ -35,7 +35,7 @@ export default function Home() {
 
   // Get the current stations to display based on the page
   const currentStations = filteredData.slice(indexOfFirstStation, indexOfLastStation);
-
+ 
   // Handle next and previous page
   const nextPage = () => {
     if (currentPage < Math.ceil(filteredData.length / stationsPerPage)) {
@@ -76,6 +76,7 @@ export default function Home() {
             <Station_info
               key={station.station_id} // Ensure each station has a unique key
               station_id={station.station_id}
+              location={station.location}
               data={station} // Ensure data is passed properly
               colapse={colapse_all}
             />
