@@ -23,7 +23,7 @@ def get_acceleration_data():
     if pause_api or not acceleration_values:
         return jsonify([])  # Empty response when the API is paused or no data
 
-    return jsonify([{'acceleration': round(acceleration, 8), 'station_id': station_id}])
+    return jsonify([{'acceleration': round(acceleration, 20), 'station_id': station_id}])
 
 # Tkinter GUI setup
 class AccelerationApp:
@@ -46,7 +46,7 @@ class AccelerationApp:
         frame.grid_columnconfigure(1, weight=1)
 
         # Acceleration Label
-        self.acceleration_label = tk.Label(frame, text=f"Acceleration: {round(acceleration, 8)} m/s²", font=('Arial', 14))
+        self.acceleration_label = tk.Label(frame, text=f"Acceleration: {round(acceleration, 12)} m/s²", font=('Arial', 14))
         self.acceleration_label.grid(row=0, column=0, columnspan=2, pady=20)
 
         # Load File Button
@@ -104,10 +104,10 @@ class AccelerationApp:
         global acceleration, current_index, acceleration_values
         while self.running and current_index < len(acceleration_values):
             acceleration = acceleration_values[current_index]
-            self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 8)} m/s²")
+            self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 20)} m/s²")
             current_index += 1
             self.root.update()  # Update the GUI to avoid freezing
-            time.sleep(0.01)
+            time.sleep(0.1)
 
         if current_index >= len(acceleration_values):
             print("Reached the end of the data file.")
@@ -118,7 +118,7 @@ class AccelerationApp:
         self.running = False
         acceleration = 0.0  # Reset the acceleration to 0 when stopping
         current_index = 0  # Reset index to start from the beginning
-        self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 8)} m/s²")
+        self.acceleration_label.config(text=f"Acceleration: {round(acceleration, 20)} m/s²")
         pause_api = True
 
     def update_station_id(self):
