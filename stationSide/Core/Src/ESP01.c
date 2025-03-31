@@ -6,7 +6,6 @@
 #include "fonts.h"
 #include "main.h"
 extern IWDG_HandleTypeDef hiwdg;
-char CUURENT_LINE= 0;
 #define RX_BUFFER_SIZE 128
 
 // Sends an AT command and waits for the expected response
@@ -26,10 +25,6 @@ static HAL_StatusTypeDef SendCommand(const char *cmd, const char *expected, uint
 HAL_StatusTypeDef WaitForResponse(const char *expected, uint32_t timeout)
 {
 
-
-	if (CUURENT_LINE>=120){
-		CUURENT_LINE=1;
-	}
     uint32_t tickstart = HAL_GetTick();
     uint8_t rxByte;
     char buffer[RX_BUFFER_SIZE];
@@ -99,7 +94,6 @@ void ESP_Init(void)
     	}
 
         // Set Wi-Fi mode to station mode
-    	CUURENT_LINE+=40;
     	ST7735_FillRectangleFast(0, ESP_Y, 128,45, ST7735_BLACK);
     	ST7735_WriteString(1,ESP_Y,"CONNECTING...", Font_5x8, ST7735_WHITE, ST7735_BLACK);
 
