@@ -39,7 +39,7 @@ float MPU6050_Read_Accel(I2C_HandleTypeDef *hi2c)
     if (HAL_I2C_Mem_Read(hi2c, MPU6050_ADDR, ACCEL_XOUT_H, 1, rawData, 6, 100) != HAL_OK)
     {
         MPU6050_Init(hi2c);
-        return -1;  // Return error value
+        return -1.0;  // Return error value
     }
 
     // Convert raw data to acceleration (m/s²)
@@ -54,6 +54,7 @@ float MPU6050_Read_Accel(I2C_HandleTypeDef *hi2c)
     // === Step 1: Compute Gravity Vector Magnitude ===
     float g_magnitude = sqrt(Ax * Ax + Ay * Ay + Az * Az);
 
+
     // Normalize gravity vector (unit vector)
     float gX = (Ax / g_magnitude) * 9.81f;
     float gY = (Ay / g_magnitude) * 9.81f;
@@ -67,7 +68,7 @@ float MPU6050_Read_Accel(I2C_HandleTypeDef *hi2c)
     // Compute magnitude of true motion
     float motionMagnitude = sqrt(aX_noG * aX_noG + aY_noG * aY_noG + aZ_noG * aZ_noG);
     motionMagnitude-=0.55;
-       if (motionMagnitude<0)return 0;
+       if (motionMagnitude<0)return 0.0;
        // === Step 3: Apply Strict Noise Filtering ===
 
 

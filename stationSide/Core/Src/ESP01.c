@@ -54,8 +54,8 @@ HAL_StatusTypeDef WaitForResponse(const char *expected, uint32_t timeout)
         }
     }
     //ST7735_FillScreenFast(ST7735_WHITE);
-    ST7735_WriteString(1, CUURENT_LINE,buffer, Font_5x8, ST7735_BLUE, ST7735_BLACK);
-    CUURENT_LINE+=50;
+    ST7735_WriteString(1, ESP_Y,buffer, Font_5x8, ST7735_RED, ST7735_BLACK);
+
     return HAL_TIMEOUT; // No retries, just return the result
 }
 
@@ -76,23 +76,34 @@ void ESP_Init(void)
 
     	char cmd[128];
     	// Check if already connected to Wi-Fi
-    	ST7735_WriteString(1, CUURENT_LINE,"checking connection", Font_5x8, ST7735_WHITE, ST7735_BLACK);
-    	CUURENT_LINE+=10;
+    	ST7735_WriteString(1, ESP_Y,"checking connection", Font_5x8, ST7735_GREEN, ST7735_BLACK);
+
     	if (SendCommand("AT+CWJAP?", "No AP", 500)!= HAL_OK){
 
             snprintf(cmd, sizeof(cmd), "AT+CIPSTART=\"UDP\",\"%s\",%d", UDP_TARGET_IP, UDP_TARGET_PORT);
 
             SendCommand(cmd, "OK", 1500);
-    		return;
+            if (SendCommand("AT", "OK", 100)==HAL_OK){
+            	ST7735_FillRectangleFast(0, ESP_Y, 128,45, ST7735_BLACK);
+            	ST7735_WriteString(20,ESP_Y,"ESP IS WORKING...", Font_5x8, ST7735_GREEN, ST7735_BLACK);
+            	return;
+            }
+            else{
+            	ST7735_FillRectangleFast(0, ESP_Y, 128,45, ST7735_BLACK);
+            	ST7735_WriteString(1,ESP_Y,"ESP ERROR...", Font_5x8, ST7735_WHITE, ST7735_BLACK);
+            	HAL_Delay(10000);
+            	NVIC_SystemReset();
+            }
+
+
     	}
 
         // Set Wi-Fi mode to station mode
     	CUURENT_LINE+=40;
-    	ST7735_WriteString(1, CUURENT_LINE,"CONNECTING...", Font_5x8, ST7735_WHITE, ST7735_BLACK);
+    	ST7735_FillRectangleFast(0, ESP_Y, 128,45, ST7735_BLACK);
+    	ST7735_WriteString(1,ESP_Y,"CONNECTING...", Font_5x8, ST7735_WHITE, ST7735_BLACK);
 
         SendCommand("AT+CWMODE=1", "OK", 1500);
-        ST7735_FillScreenFast(ST7735_BLACK);
-        CUURENT_LINE=1;
 
         // Attempt to connect
         snprintf(cmd, sizeof(cmd), "AT+CWJAP=\"%s\",\"%s\"", WIFI_SSID, WIFI_PASSWORD);
@@ -104,6 +115,16 @@ void ESP_Init(void)
 
         SendCommand(cmd, "OK", 3000);
 
+        if (SendCommand("AT", "OK", 100)==HAL_OK){
+        	ST7735_FillRectangleFast(0, ESP_Y, 128,45, ST7735_BLACK);
+        	ST7735_WriteString(20,ESP_Y,"ESP IS WORKING...", Font_5x8, ST7735_GREEN, ST7735_BLACK);
+        }
+        else{
+        	ST7735_FillRectangleFast(0, ESP_Y, 128,45, ST7735_BLACK);
+        	ST7735_WriteString(1,ESP_Y,"ESP ERROR...", Font_5x8, ST7735_WHITE, ST7735_BLACK);
+        	HAL_Delay(10000);
+        	NVIC_SystemReset();
+        }
 }
 
 // Sends real-time data over UDP (no retry, no waiting)
@@ -120,6 +141,7 @@ void ESP_Send_Data(float data, int Station_ID)
     if (SendCommand(cmd, ">", 500) == HAL_OK)
     {
         // Send the payload immediately
+    	//ST7735_WriteString(10,ESP_Y+10,payload, Font_5x8, ST7735_GREEN, ST7735_BLACK);
         HAL_UART_Transmit(&huart1, (uint8_t*)payload, len, HAL_MAX_DELAY);
     }
     else{

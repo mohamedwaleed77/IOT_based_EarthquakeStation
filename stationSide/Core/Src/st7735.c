@@ -159,6 +159,13 @@ void ST7735_Init() {
     ST7735_ExecuteCommandList(init_cmds3);
     ST7735_InvertColors(1);
     ST7735_Unselect();
+    ST7735_FillScreenFast(ST7735_BLACK);
+    ST7735_FillRectangleFast(0, 0, 128, 10, ST7735_WHITE);
+    ST7735_WriteString(20, 2,"EARTHQUAKE STATION", Font_5x8, ST7735_BLACK, ST7735_WHITE);
+    ST7735_FillRectangleFast(0, 40, 128, 10, ST7735_WHITE);
+    ST7735_WriteString(30, 42,"ESP01 STATUS", Font_5x8, ST7735_BLACK, ST7735_WHITE);
+    ST7735_FillRectangleFast(0, 105, 128, 10, ST7735_WHITE);
+    ST7735_WriteString(15, 107,"ACCELEROMETER STATUS", Font_5x8, ST7735_BLACK, ST7735_WHITE);
 }
 
 void ST7735_DrawPixel(uint16_t x, uint16_t y, uint16_t color) {
@@ -291,16 +298,6 @@ void ST7735_FillScreenFast(uint16_t color) {
     ST7735_FillRectangleFast(0, 0, ST7735_WIDTH, ST7735_HEIGHT, color);
 }
 
-void ST7735_DrawImage(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data) {
-    if((x >= ST7735_WIDTH) || (y >= ST7735_HEIGHT)) return;
-    if((x + w - 1) >= ST7735_WIDTH) return;
-    if((y + h - 1) >= ST7735_HEIGHT) return;
-
-    ST7735_Select();
-    ST7735_SetAddressWindow(x, y, x+w-1, y+h-1);
-    ST7735_WriteData((uint8_t*)data, sizeof(uint16_t)*w*h);
-    ST7735_Unselect();
-}
 
 void ST7735_InvertColors(bool invert) {
     ST7735_Select();

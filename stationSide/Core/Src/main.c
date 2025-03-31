@@ -118,23 +118,16 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4,1);//enable accelrometer
 
-  HAL_Delay(10);
-  MPU6050_Init(&hi2c1);
 
   ST7735_Init();
 
   HAL_IWDG_Refresh(&hiwdg);
-  ST7735_FillScreenFast(ST7735_BLACK);
+
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8,1);
-  ST7735_WriteString(15, 54,"EARTHQUAKE", Font_5x8, ST7735_GREEN, ST7735_BLACK);
-  ST7735_WriteString(15, 64,"STATION", Font_5x8, ST7735_GREEN, ST7735_BLACK);
-
-  HAL_Delay(1000);
-  ST7735_FillScreenFast(ST7735_BLACK);
-
   ESP_Init();
-  ST7735_FillScreenFast(ST7735_BLACK);
-  ST7735_WriteString(0, 0,"!!STATION is working", Font_5x8, ST7735_GREEN, ST7735_BLACK);
+  MPU6050_Init(&hi2c1);
+
+  ST7735_WriteString(11, STATION_Y,"STATION IS WORKING..", Font_5x8, ST7735_GREEN, ST7735_BLACK);
   HAL_IWDG_Refresh(&hiwdg);
   float accelMagnitude=0;
 
@@ -145,32 +138,37 @@ int main(void)
   /* USER CODE BEGIN WHILE */
    //HAL_UART_Receive_IT(&huart1, &uart_rx_data, 1);
   int x=0;
-
+  ST7735_FillRectangleFast(0, ACCEL_Y, 128, 50, ST7735_BLACK);
+  ST7735_WriteString(20, ACCEL_Y,"ACC IS WORKING..", Font_5x8, ST7735_GREEN, ST7735_BLACK);
   while (1)
   {
 
 	  accelMagnitude=MPU6050_Read_Accel(&hi2c1);
 	  if ( accelMagnitude==0 ){ //
-		  //HAL_IWDG_Refresh(&hiwdg);
+		  HAL_IWDG_Refresh(&hiwdg);
+
 		  x+=1;
 		  if (x==500){
-			  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, 0);
+			 HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, 0);
 
 		  }
 
 		  continue;
 	  }
-	  else if ( accelMagnitude==-1 ){
+	  else if ( accelMagnitude==-1 || isnanf(accelMagnitude) ){
 		  // HAL_IWDG_Refresh(&hiwdg);
-		  ST7735_WriteString(35, 64,"ERROR ACC", Font_5x8, ST7735_RED, ST7735_BLACK);
+		  ST7735_FillRectangleFast(0, ACCEL_Y, 128, 50, ST7735_BLACK);
+		  ST7735_WriteString(20, ACCEL_Y,"ACC ERROR!!", Font_5x8, ST7735_WHITE, ST7735_BLACK);
+		  ST7735_WriteString(20, ACCEL_Y+10,"RESETTING..", Font_5x8, ST7735_WHITE, ST7735_BLACK);
+		  HAL_Delay(1000);
+		  NVIC_SystemReset();
 
-		  ST7735_FillScreenFast(ST7735_BLACK);
-		  continue;
 	  }
-	  HAL_Delay(1);
+	  //HAL_Delay(1);
 	  ESP_Send_Data( accelMagnitude, 1);
 	  HAL_IWDG_Refresh(&hiwdg);
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8,1);
+
 	  x=0;
 
 

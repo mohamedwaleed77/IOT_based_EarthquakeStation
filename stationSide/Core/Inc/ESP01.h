@@ -6,8 +6,8 @@
 
 #include <ESP01_SECRET_KEYS.h>
 
-#define UDP_TARGET_IP   "192.168.1.108" //Write your server IP here (make it static)
-#define UDP_TARGET_PORT 5005  // write the UDP port number
+#define UDP_TARGET_IP   "192.168.1.108"
+#define UDP_TARGET_PORT 5005  // Define the UDP port number
 #define RST_PORT 		GPIOA
 #define RST_PIN 		GPIO_PIN_0
 extern UART_HandleTypeDef huart1;  // Use UART1
