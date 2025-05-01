@@ -46,7 +46,8 @@ def compute_fft_peak_frequency(acceleration_data, fs):
     plt.grid()
     plt.legend()
     plt.show()'''
-    if (peak_frequency>0.001 and peak_frequency<0.1) or (peak_frequency>1 and peak_frequency<20):
+    #if (peak_frequency>0.001 and peak_frequency<0.1) or (peak_frequency>1 and peak_frequency<20):
+    if (peak_frequency>0.001 and peak_frequency<0.1)  :
         return True
     return False
 
