@@ -9,3 +9,6 @@ The project consist of two main components Server side and Station side
 # 3D Case Design 
 ![image](cover.jpg)
 ![image](base.jpg)
+
+# PCB Design
+![image](pcb.png)
