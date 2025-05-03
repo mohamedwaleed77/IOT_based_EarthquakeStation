@@ -1,14 +1,15 @@
 # IOT based Earthquake Station 
 The project consist of two main components Server side and Station side
-![image](block_diagram.png)
+![image](images/block_diagram.png)
 
 
 # Server Side Overview
-![image](apis.png)
+![image](images/apis.png)
 
 # 3D Case Design 
-![image](cover.jpg)
-![image](base.jpg)
+![image](images/cover.png)
+![image](images/base.png)
+![image](images/pins.png)
 
 # PCB Design
-![image](pcb.png)
+![image](images/pcb.png)
