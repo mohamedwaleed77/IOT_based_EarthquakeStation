@@ -15,3 +15,4 @@ The project consist of two main components Server side and Station side
 
 # PCB Design
 ![image](images/pcb.png)
+![image](stationSide/Wirings.png)
