@@ -13,7 +13,7 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=true
       - MYSQL_DATABASE=station
     ports:
-      - "3306:3306"
+      - "3006:3306"
     volumes:
       - "./database_init:/docker-entrypoint-initdb.d"
       - "./savedata:/var/lib/mysql"

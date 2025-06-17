@@ -4,6 +4,7 @@ import History from "./history";
 export default function Station_info(props) {
   let id = props.station_id;
   let location=props.location;
+  let coordinates=props.coordinates
   let [arrow, arrow_setter] = useState(
     <div className="rounded-full ml-2 bg-black h-4 w-4"></div>
   );
@@ -15,6 +16,7 @@ export default function Station_info(props) {
 
   // Function to fetch history data using REST remains unchanged
   const fetchHistoryData = async () => {
+    console.log(coordinates)
     try {
       const response = await fetch(`http://localhost:3001/history/${id}`);
       const result = await response.json();
@@ -142,6 +144,18 @@ export default function Station_info(props) {
           <p className="bg-gray-300 text-black text-center">History</p>
           <History info={history} />
         </div>
+          <div className="mt-2 p-2">
+        <iframe
+          title={`map-${id}`}
+          width="100%"
+          height="250"
+          style={{ border: 0 }}
+          loading="lazy"
+          allowFullScreen
+          referrerPolicy="no-referrer-when-downgrade"
+          src={`https://www.google.com/maps?q=${coordinates}&z=14&output=embed`}
+        />
+      </div>
       </div>
     </div>
   );

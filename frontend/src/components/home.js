@@ -79,7 +79,9 @@ export default function Home() {
               location={station.location}
               data={station} // Ensure data is passed properly
               colapse={colapse_all}
+              coordinates={station.coordinates}
             />
+            
           ))}
         </div>
 

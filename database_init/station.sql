@@ -44,7 +44,8 @@ CREATE TABLE `events` (
 
 CREATE TABLE `station_table` (
   `station_id` int(11) NOT NULL,
-  `location` text NOT NULL
+  `location` text NOT NULL,
+  `coordinates` text NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
