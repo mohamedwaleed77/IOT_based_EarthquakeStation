@@ -72,12 +72,14 @@ PCB and wiring layout for connecting the STM32 microcontroller to the accelerome
 
 ```
 .
-├── server/               # Backend Flask API and ML model
-├── stationSide/         # STM32 firmware, sensor logic, UDP client
-├── web_dashboard/       # Web interface for live event display
-├── models/              # Trained machine learning models
-├── images/              # Diagrams and photos
-└── README.md            # Project overview
+├── Design Autocad/         # 3D-printed enclosure and mechanical design files
+├── Machine learning Tests/ # Model evaluation, training notebooks, and experiments
+├── backend/                # Flask API for data ingestion and prediction
+├── database_init/          # SQL database schema and initialization scripts
+├── frontend/               # Web dashboard for visualizing seismic events
+├── images/                 # System diagrams, 3D prints, and screenshots
+├── stationSide/            # STM32 code, sensor logic, and UDP transmission
+└── README.md               # Project overview
 ```
 
 ---
