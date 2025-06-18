@@ -8,8 +8,10 @@ import websocket
 import matplotlib.pyplot as plt
 from collections import deque
 import time
+import pickle
 
-
+with open('random_forest_200.pkl', 'rb') as model_file:
+    ml_model = pickle.load(model_file)
 
 UDP_IP = "0.0.0.0"  # Listen on all interfaces
 UDP_PORT = 5005     # Listening port
@@ -18,6 +20,13 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((UDP_IP, UDP_PORT))
 sock.settimeout(2.0)  # Set timeout to prevent blocking forever
 last_richter=0
+def predict_with_model(acceleration_data):
+    # You may need to preprocess or reshape the data depending on your model
+    # Example: flatten and wrap in list to simulate a 2D array for scikit-learn
+    features = [acceleration_data]  # shape: (1, N) if needed
+    prediction = ml_model.predict(features)
+    return prediction[0] == 1
+
 def compute_fft_peak_frequency(acceleration_data, fs):
     # Number of data points
     n = len(acceleration_data)
@@ -324,14 +333,15 @@ if __name__ == "__main__":
                 acceleration_data=[]
 
         if sender_address:
-            is_earthquake = compute_fft_peak_frequency(acceleration_data, fs)
-            if not is_earthquake:
-                print(acceleration_data[0])
-                send_message(0, sender_address[0], sender_address[1])  # Send response
-            print(f"Is earthquake?: {is_earthquake}")
-            if is_earthquake:
-                time.sleep(1)
-                last_richter=0
-                earthquake_processor = EarthquakeProcessor()
-                earthquake_processor.main_loop() 
+            if predict_with_model(acceleration_data): #ml model first
+                is_earthquake = compute_fft_peak_frequency(acceleration_data, fs)
+                if not is_earthquake:
+                    print(acceleration_data[0])
+                    send_message(0, sender_address[0], sender_address[1])  # Send response
+                print(f"Is earthquake?: {is_earthquake}")
+                if is_earthquake:
+                    time.sleep(1)
+                    last_richter=0
+                    earthquake_processor = EarthquakeProcessor()
+                    earthquake_processor.main_loop() 
            
