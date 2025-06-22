@@ -9,23 +9,23 @@ import matplotlib.pyplot as plt
 from collections import deque
 import time
 import pickle
+import joblib
 
 with open('random_forest_200.pkl', 'rb') as model_file:
-    ml_model = pickle.load(model_file)
+    ml_model = joblib.load(model_file)
 
 UDP_IP = "0.0.0.0"  # Listen on all interfaces
 UDP_PORT = 5005     # Listening port
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((UDP_IP, UDP_PORT))
-sock.settimeout(2.0)  # Set timeout to prevent blocking forever
+sock.settimeout(2.0)  
 last_richter=0
 def predict_with_model(acceleration_data):
-    # You may need to preprocess or reshape the data depending on your model
-    # Example: flatten and wrap in list to simulate a 2D array for scikit-learn
-    features = [acceleration_data]  # shape: (1, N) if needed
-    prediction = ml_model.predict(features)
-    return prediction[0] == 1
+    features = [acceleration_data] 
+    proba  = ml_model.predict_proba(features)
+    prob_earthquake = proba[0][1] 
+    return prob_earthquake >= 0.95
 
 def compute_fft_peak_frequency(acceleration_data, fs):
     # Number of data points
@@ -334,6 +334,7 @@ if __name__ == "__main__":
 
         if sender_address:
             if predict_with_model(acceleration_data): #ml model first
+                print("model yes")
                 is_earthquake = compute_fft_peak_frequency(acceleration_data, fs)
                 if not is_earthquake:
                     print(acceleration_data[0])
