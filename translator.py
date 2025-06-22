@@ -24,7 +24,7 @@ last_richter=0
 def predict_with_model(acceleration_data):
     features = [acceleration_data] 
     proba  = ml_model.predict_proba(features)
-    prob_earthquake = proba[0][1] 
+    prob_earthquake = proba[0][1]
     return prob_earthquake >= 0.95
 
 def compute_fft_peak_frequency(acceleration_data, fs):
@@ -55,8 +55,7 @@ def compute_fft_peak_frequency(acceleration_data, fs):
     plt.grid()
     plt.legend()
     plt.show()'''
-    #if (peak_frequency>0.001 and peak_frequency<0.1) or (peak_frequency>1 and peak_frequency<20):
-    if (peak_frequency>0.001 and peak_frequency<0.1)  :
+    if (peak_frequency>1 and peak_frequency<20):
         return True
     return False
 
