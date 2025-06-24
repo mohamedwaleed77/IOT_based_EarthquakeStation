@@ -29,7 +29,7 @@ def predict_with_model(acceleration_data):
     features = [acceleration_data] 
     proba  = ml_model.predict_proba(features)
     prob_earthquake = proba[0][1]
-    return prob_earthquake >= 1
+    return prob_earthquake >= 0.99
 
 def compute_fft_peak_frequency(acceleration_data, fs):
     # Number of data points
