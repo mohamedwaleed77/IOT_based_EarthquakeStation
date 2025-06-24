@@ -10,6 +10,10 @@ from collections import deque
 import time
 import pickle
 import joblib
+import pandas as pd
+import warnings
+warnings.filterwarnings("ignore", message="X does not have valid feature names.*")
+
 
 with open('random_forest_200.pkl', 'rb') as model_file:
     ml_model = joblib.load(model_file)
@@ -25,7 +29,7 @@ def predict_with_model(acceleration_data):
     features = [acceleration_data] 
     proba  = ml_model.predict_proba(features)
     prob_earthquake = proba[0][1]
-    return prob_earthquake >= 0.95
+    return prob_earthquake >= 0.99
 
 def compute_fft_peak_frequency(acceleration_data, fs):
     # Number of data points
