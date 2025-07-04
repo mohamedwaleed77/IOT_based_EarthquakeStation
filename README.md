@@ -34,6 +34,7 @@ The station hardware is housed in a custom-designed 3D-printed case to protect a
 | ⚙️ Case Base | ![Base](images/base.png) |
 | 🔌 Pin Alignment | ![Pins](images/pins.png) |
 | ✅ Final Assembly | ![Final Assembly](images/final.jpeg) |
+| 🌍 Website | ![Website](images/FRONTEND.jpeg) |
 
 ---
 
